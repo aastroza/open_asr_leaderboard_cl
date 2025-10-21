@@ -1,243 +1,641 @@
-# Open ASR Leaderboard
+# Chilean Spanish ASR Evaluation
 
-This repository contains the code for the Open ASR Leaderboard. The leaderboard is a Gradio Space that allows users to compare the accuracy of ASR models on a variety of datasets. The leaderboard is hosted at [hf-audio/open_asr_leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard).
+> **Specialized adaptation of the [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard) for evaluating Automatic Speech Recognition (ASR) models on Chilean Spanish.**
 
-# Requirements
+## About This Repository
 
-Each library has its own set of requirements. We recommend using a clean conda environment, with Python 3.10 or above.
+This repository is a **streamlined, task-specific version** of the [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard) evaluation framework, specifically adapted for benchmarking ASR models on the **Chilean Spanish dialect**.
 
-1) Clone this repository.
-2) Install PyTorch by following the instructions here: https://pytorch.org/get-started/locally/
-3) Install the common requirements for all library by running `pip install -r requirements/requirements.txt`.
-4) Install the requirements for each library you wish to evaluate by running `pip install -r requirements/requirements_<library_name>.txt`.
-5) Connect your Hugging Face account by running `huggingface-cli login`.
+### What is the Open ASR Leaderboard?
 
-**Note:** If you wish to run NeMo, the benchmark currently needs CUDA 12.6 to fix a problem in previous drivers for RNN-T inference with cooperative kernels inside conditional nodes (see here: https://github.com/NVIDIA/NeMo/pull/9869). Running `nvidia-smi` should output "CUDA Version: 12.6" or higher.
+The [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard) is a comprehensive benchmarking framework developed by Hugging Face, NVIDIA NeMo, and the community to evaluate ASR models across multiple English datasets (LibriSpeech, AMI, VoxPopuli, Earnings-22, GigaSpeech, SPGISpeech, TED-LIUM). It supports various ASR frameworks including Transformers, NeMo, SpeechBrain, and more, providing standardized WER and RTFx metrics.
 
-# Evaluate a model
+### How This Repository Differs
 
-Each library has a script `run_eval.py` that acts as the entry point for evaluating a model. The script is run by the corresponding bash script for each model that is being evaluated. The script then outputs a JSONL file containing the predictions of the model on each dataset, and summarizes the Word Error Rate (WER) and Inverse Real-Time Factor (RTFx) of the model on each dataset after completion.
+This Chilean Spanish adaptation makes the following key modifications to focus exclusively on Chilean Spanish ASR evaluation:
 
-To reproduce existing results:
+| Aspect | Original Open ASR Leaderboard | This Repository |
+|--------|-------------------------------|-----------------|
+| **Target Language** | English (primarily) | Chilean Spanish |
+| **Dataset** | 7 English datasets (LibriSpeech, AMI, etc.) | Single dataset: [`astroza/es-cl-asr-test-only`](https://huggingface.co/datasets/astroza/es-cl-asr-test-only) |
+| **Text Normalization** | English text normalizer | **Multilingual normalizer** preserving Spanish accents (á, é, í, ó, ú, ñ) |
+| **Model Focus** | Broad coverage (~50+ models) | **7 selected models** optimized for multilingual/Spanish ASR |
+| **Frameworks** | 10+ frameworks (Transformers, NeMo, SpeechBrain, CTranslate2, etc.) | **4 frameworks**: Transformers, NeMo, Phi, API |
+| **Batch Script** | Individual scripts per model type | **Single unified script** (`evaluate_chilean_asr.sh`) for all models |
+| **Repository Size** | ~15,000+ lines of code | **~3,000 lines** (streamlined) |
 
-1) Change directory into the library you wish to evaluate. For example, `cd transformers`.
-2) Run the bash script for the model you wish to evaluate. For example, `bash run_wav2vec2.sh`.
+### Key Modifications
 
-**Note**: All evaluations were run using an NVIDIA A100-SXM4-80GB GPU, with NVIDIA driver 560.28.03, CUDA 12.6, and PyTorch 2.4.0. You should ensure you use the same configuration when submitting results. If you are unable to create an equivalent machine, please request one of the maintainers to run your scripts for evaluation! 
+1. **Text Normalization for Spanish**
+   - Switched from `EnglishTextNormalizer()` to `BasicMultilingualTextNormalizer(remove_diacritics=False)`
+   - Preserves critical Spanish characters: `á, é, í, ó, ú, ñ, ü, ¿, ¡`
+   - Modified in `normalizer/data_utils.py`
 
-# Add a new library
+2. **Removed Unused Frameworks**
+   - Deleted: SpeechBrain, Moonshine, Kyutai, Granite, CTranslate2, TensorRT-LLM, LiteASR
+   - Kept only frameworks needed for the 7 selected models
 
-To add a new library for evaluation in this benchmark, please follow the steps below:
+3. **Simplified Dataset Configuration**
+   - Single dataset configuration: `astroza/es-cl-asr-test-only`
+   - Removed multi-dataset evaluation logic
 
-1) Fork this repository and create a new branch
-2) Create a new directory for your library. For example, `mkdir transformers`.
-3) Copy the template `run_eval.py` script below into your new directory. The script should be updated for the new library by making two modifications. Otherwise, please try to keep the structure of the script the same as in the template. In particular, the data loading, evaluation and manifest writing must be done in the same way as other libraries for consistency.
-   1) Update the model loading logic in the `main` function
-   2) Update the inference logic in the `benchmark` function
+4. **Unified Batch Evaluation**
+   - Created `evaluate_chilean_asr.sh` to run all 7 models sequentially
+   - Pre-configured with optimal batch sizes and parameters for each model
 
-<details>
+5. **Chilean Spanish-Specific Documentation**
+   - Updated README with Chilean Spanish context
+   - Added Spanish-specific troubleshooting and considerations
 
-<summary> Template script for Transformers: </summary>
+---
 
-```python
-import argparse
-import os
-import torch
-from transformers import WhisperForConditionalGeneration, WhisperProcessor
-import evaluate
-from normalizer import data_utils
-import time
-from tqdm import tqdm
+## Models Evaluated
 
-wer_metric = evaluate.load("wer")
+This repository evaluates **7 state-of-the-art ASR models** selected for their multilingual or Spanish language support:
 
-def main(args):
-    # Load model (FILL ME!)
-    model = WhisperForConditionalGeneration.from_pretrained(args.model_id, torch_dtype=torch.bfloat16).to(args.device)
-    processor = WhisperProcessor.from_pretrained(args.model_id)
+| Model | Type | Framework | Parameters | Notes |
+|-------|------|-----------|------------|-------|
+| **openai/whisper-large-v3** | Multilingual | Transformers | 1.5B | OpenAI's flagship ASR model |
+| **openai/whisper-large-v3-turbo** | Multilingual | Transformers | 809M | Faster Whisper variant |
+| **nvidia/canary-1b-v2** | Multilingual | NeMo | 1B | NVIDIA's multilingual ASR |
+| **nvidia/parakeet-tdt-0.6b-v3** | Multilingual | NeMo | 0.6B | Lightweight, fast inference |
+| **microsoft/Phi-4-multimodal-instruct** | Multimodal | Phi | 14B | Microsoft's multimodal LLM with audio |
+| **mistralai/Voxtral-Mini-3B-2507** | Speech-to-text | Transformers | 3B | Mistral's ASR model |
+| **elevenlabs/scribe_v1** | API-based | API | N/A | ElevenLabs' commercial ASR API |
 
-    def benchmark(batch):
-        # Load audio inputs
-        audios = [audio["array"] for audio in batch["audio"]]
-        batch["audio_length_s"] = [len(audio) / batch["audio"][0]["sampling_rate"] for audio in audios]
-        minibatch_size = len(audios)
+## Dataset
 
-        # Start timing
-        start_time = time.time()
+**Dataset**: [`astroza/es-cl-asr-test-only`](https://huggingface.co/datasets/astroza/es-cl-asr-test-only)
+**Language**: Spanish (Chilean variant)
+**Split**: `test`
+**Domain**: Chilean Spanish speech samples
 
-        # INFERENCE (FILL ME! Replacing 1-3 with steps from your library)
-        # 1. Pre-processing
-        inputs = processor(audios, sampling_rate=16_000, return_tensors="pt").to(args.device)
-        inputs["input_features"] = inputs["input_features"].to(torch.bfloat16)
-        # 2. Generation
-        pred_ids = model.generate(**inputs)
-        # 3. Post-processing
-        pred_text = processor.batch_decode(pred_ids, skip_special_tokens=True)
+## Metrics
 
-        # End timing
-        runtime = time.time() - start_time
+Following the Open ASR Leaderboard standard, we report:
 
-        # normalize by minibatch size since we want the per-sample time
-        batch["transcription_time_s"] = minibatch_size * [runtime / minibatch_size]
+- **WER (Word Error Rate)**: ⬇️ Lower is better - Measures transcription accuracy
+- **RTFx (Real-Time Factor)**: ⬆️ Higher is better - Measures inference speed (audio_duration / transcription_time)
 
-        # normalize transcriptions with English normalizer
-        batch["predictions"] = [data_utils.normalizer(pred) for pred in pred_text]
-        batch["references"] = batch["norm_text"]
-        return batch
+---
 
-    if args.warmup_steps is not None:
-        warmup_dataset = data_utils.load_data(args)
-        warmup_dataset = data_utils.prepare_data(warmup_dataset)
+## Quick Start
 
-        num_warmup_samples = args.warmup_steps * args.batch_size
-        if args.streaming:
-            warmup_dataset = warmup_dataset.take(num_warmup_samples)
-        else:
-            warmup_dataset = warmup_dataset.select(range(min(num_warmup_samples, len(warmup_dataset))))
-        warmup_dataset = iter(warmup_dataset.map(benchmark, batch_size=args.batch_size, batched=True))
+### Prerequisites
 
-        for _ in tqdm(warmup_dataset, desc="Warming up..."):
-            continue
+1. Python 3.8+
+2. CUDA-compatible GPU (recommended: 24GB+ VRAM)
+3. Hugging Face account
+4. Sufficient disk space (~50GB for all models)
 
-    dataset = data_utils.load_data(args)
-    dataset = data_utils.prepare_data(dataset)
+### Installation
 
-    if args.max_eval_samples is not None and args.max_eval_samples > 0:
-        print(f"Subsampling dataset to first {args.max_eval_samples} samples!")
-        if args.streaming:
-            dataset = dataset.take(args.max_eval_samples)
-        else:
-            dataset = dataset.select(range(min(args.max_eval_samples, len(dataset))))
+#### Option 1: Install All Dependencies
 
-    dataset = dataset.map(
-        benchmark, batch_size=args.batch_size, batched=True, remove_columns=["audio"],
-    )
+```bash
+# Clone the repository
+git clone https://github.com/aastroza/open_asr_leaderboard_cl.git
+cd open_asr_leaderboard_cl
 
-    all_results = {
-        "audio_length_s": [],
-        "transcription_time_s": [],
-        "predictions": [],
-        "references": [],
-    }
-    result_iter = iter(dataset)
-    for result in tqdm(result_iter, desc="Samples..."):
-        for key in all_results:
-            all_results[key].append(result[key])
-
-    # Write manifest results (WER and RTFX)
-    manifest_path = data_utils.write_manifest(
-        all_results["references"],
-        all_results["predictions"],
-        args.model_id,
-        args.dataset_path,
-        args.dataset,
-        args.split,
-        audio_length=all_results["audio_length_s"],
-        transcription_time=all_results["transcription_time_s"],
-    )
-    print("Results saved at path:", os.path.abspath(manifest_path))
-
-    wer = wer_metric.compute(
-        references=all_results["references"], predictions=all_results["predictions"]
-    )
-    wer = round(100 * wer, 2)
-    rtfx = round(sum(all_results["audio_length_s"]) / sum(all_results["transcription_time_s"]), 2)
-    print("WER:", wer, "%", "RTFx:", rtfx)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--model_id",
-        type=str,
-        required=True,
-        help="Model identifier. Should be loadable with 🤗 Transformers",
-    )
-    parser.add_argument(
-        "--dataset_path",
-        type=str,
-        default="esb/datasets",
-        help="Dataset path. By default, it is `esb/datasets`",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        required=True,
-        help="Dataset name. *E.g.* `'librispeech_asr` for the LibriSpeech ASR dataset, or `'common_voice'` for Common Voice. The full list of dataset names "
-        "can be found at `https://huggingface.co/datasets/esb/datasets`",
-    )
-    parser.add_argument(
-        "--split",
-        type=str,
-        default="test",
-        help="Split of the dataset. *E.g.* `'validation`' for the dev split, or `'test'` for the test split.",
-    )
-    parser.add_argument(
-        "--device",
-        type=int,
-        default=-1,
-        help="The device to run the pipeline on. -1 for CPU (default), 0 for the first GPU and so on.",
-    )
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=1,
-        help="Number of samples to go through each streamed batch.",
-    )
-    parser.add_argument(
-        "--max_eval_samples",
-        type=int,
-        default=None,
-        help="Number of samples to be evaluated. Put a lower number e.g. 64 for testing this script.",
-    )
-    parser.add_argument(
-        "--no-streaming",
-        dest="streaming",
-        action="store_false",
-        help="Choose whether you'd like to download the entire dataset or stream it during the evaluation.",
-    )
-    parser.add_argument(
-        "--warmup_steps",
-        type=int,
-        default=10,
-        help="Number of warm-up steps to run before launching the timed runs.",
-    )
-    args = parser.parse_args()
-    parser.set_defaults(streaming=False)
-
-    main(args)
-
+# Install all framework dependencies
+pip install -r requirements/requirements.txt
+pip install -r requirements/requirements_nemo.txt
+pip install -r requirements/requirements_phi.txt
+pip install -r requirements/requirements-api.txt
 ```
 
-</details>
+#### Option 2: Install Selectively
 
-4) Create one bash file per model type following the conversion `run_<model_type>.sh`.
-    - The bash script should follow the same steps as other libraries. You can copy the example for [run_whisper.sh](./transformers/run_whisper.sh) and update it to your library
-    - Different model sizes of the same type should share the script. For example `Wav2Vec` and `Wav2Vec2` would be two separate scripts, but different size of `Wav2Vec2` would be part of the same script.
-    - **Important:** for a given model, you can tune decoding hyper-parameters to maximize benchmark performance (e.g. batch size, beam size, etc.). However, you must use the **same decoding hyper-parameters** for each dataset in the benchmark. For more details, refer to the [ESB paper](https://arxiv.org/abs/2210.13352).
-5) Submit a PR for your changes.
+Install only what you need for specific models:
 
-# Add a new model
+```bash
+# For Whisper and Voxtral (transformers framework)
+pip install -r requirements/requirements.txt
 
-To add a model from a new library for evaluation in this benchmark, you can follow the steps noted above.
+# For NeMo models (Canary, Parakeet)
+pip install -r requirements/requirements_nemo.txt
 
-To add a model from an existing library, we can simplify the steps to:
+# For Phi-4 Multimodal
+pip install -r requirements/requirements_phi.txt
 
-1) If the model is already supported, but of a different size, simply add the new model size to the list of models run by the corresponding bash script.
-2) If the model is entirely new, create a new bash script based on others of that library and add the new model and its sizes to that script.
-3) Run the evaluation script to obtain a list of predictions for the new model on each of the datasets.
-4) Submit a PR for your changes.
+# For ElevenLabs Scribe (API-based)
+pip install -r requirements/requirements-api.txt
+```
 
-# Citation 
+**Important**: NeMo models require CUDA 12.6+ for optimal performance. Check with:
+```bash
+nvidia-smi  # Should show "CUDA Version: 12.6" or higher
+```
 
+### Environment Setup
 
-```bibtex
-@misc{open-asr-leaderboard,
-	title        = {Open Automatic Speech Recognition Leaderboard},
-	author       = {Srivastav, Vaibhav and Majumdar, Somshubra and Koluguri, Nithin and Moumen, Adel and Gandhi, Sanchit and Hugging Face Team and Nvidia NeMo Team and SpeechBrain Team},
-	year         = 2023,
-	publisher    = {Hugging Face},
-	howpublished = "\\url{https://huggingface.co/spaces/huggingface.co/spaces/open-asr-leaderboard/leaderboard}"
+1. **Authenticate with Hugging Face** (required for downloading models/datasets):
+```bash
+huggingface-cli login
+```
+
+2. **Configure API keys** (optional, only for ElevenLabs):
+
+Create a `.env` file in the repository root:
+```bash
+# For ElevenLabs Scribe V1
+ELEVENLABS_API_KEY=your_api_key_here
+
+# Optional: For gated models
+HF_TOKEN=your_hf_token_here
+```
+
+---
+
+## Usage
+
+### Batch Evaluation (All 7 Models)
+
+Evaluate all models on the Chilean Spanish dataset with a single command:
+
+```bash
+./evaluate_chilean_asr.sh
+```
+
+**GPU Selection:**
+```bash
+# Use GPU 0 (default)
+DEVICE=0 ./evaluate_chilean_asr.sh
+
+# Use GPU 1
+DEVICE=1 ./evaluate_chilean_asr.sh
+```
+
+The script will:
+1. Evaluate each model sequentially
+2. Save results to `results/*.jsonl`
+3. Print WER and RTFx for each model
+4. Handle errors gracefully (continues on failure)
+
+**Estimated Runtime** (on NVIDIA A100 80GB):
+- All 7 models: ~2-4 hours (depends on dataset size)
+
+### Individual Model Evaluation
+
+#### Whisper Models
+
+```bash
+python transformers/run_eval.py \
+    --model_id "openai/whisper-large-v3" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 16 \
+    --no-streaming
+```
+
+**For Whisper Large V3 Turbo:**
+```bash
+python transformers/run_eval.py \
+    --model_id "openai/whisper-large-v3-turbo" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 16 \
+    --no-streaming
+```
+
+#### NeMo Models (Canary, Parakeet)
+
+**NVIDIA Canary 1B V2:**
+```bash
+python nemo_asr/run_eval.py \
+    --model_id "nvidia/canary-1b-v2" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 32 \
+    --no-streaming
+```
+
+**NVIDIA Parakeet TDT 0.6B:**
+```bash
+python nemo_asr/run_eval.py \
+    --model_id "nvidia/parakeet-tdt-0.6b-v3" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 32 \
+    --no-streaming
+```
+
+#### Microsoft Phi-4 Multimodal
+
+```bash
+python phi/run_eval.py \
+    --model_id "microsoft/Phi-4-multimodal-instruct" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 4 \
+    --no-streaming \
+    --max_new_tokens 128 \
+    --warmup_steps 2 \
+    --user_prompt "Transcribe el audio a texto en español."
+```
+
+**Note**: The Spanish prompt is critical for this model.
+
+#### Mistral Voxtral
+
+```bash
+python transformers/run_eval.py \
+    --model_id "mistralai/Voxtral-Mini-3B-2507" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --device 0 \
+    --batch_size 8 \
+    --no-streaming \
+    --max_new_tokens 128
+```
+
+#### ElevenLabs Scribe (API)
+
+```bash
+python api/run_eval.py \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --split "test" \
+    --model_name "elevenlabs/scribe_v1" \
+    --max_workers 50
+```
+
+**Note**: Requires `ELEVENLABS_API_KEY` in `.env`. API usage will incur costs.
+
+---
+
+## Results
+
+### Output Format
+
+Results are saved as JSONL (JSON Lines) files in the `results/` directory:
+
+```
+results/MODEL_openai-whisper-large-v3_DATASET_astroza_es-cl-asr-test-only_test.jsonl
+```
+
+Each line contains:
+```json
+{
+  "audio_filepath": "sample_001",
+  "duration": 12.5,
+  "time": 0.8,
+  "text": "hola cómo estás",
+  "pred_text": "hola como estas"
 }
 ```
+
+### Interpreting Results
+
+**Console Output Example:**
+```
+WER: 15.3 %
+RTFx: 42.5
+```
+
+- **WER = 15.3%**: The model made errors on 15.3% of words
+- **RTFx = 42.5**: The model transcribes 42.5× faster than real-time (12 seconds of audio takes ~0.28 seconds)
+
+**What's a Good Score?**
+- **WER**: <10% = Excellent, 10-20% = Good, 20-30% = Fair, >30% = Poor
+- **RTFx**: >10 = Fast enough for real-time, >50 = Very fast, <1 = Slower than real-time
+
+---
+
+## Repository Structure
+
+```
+open_asr_leaderboard_cl/
+├── evaluate_chilean_asr.sh       # Batch evaluation script for all models
+│
+├── transformers/                  # Hugging Face Transformers framework
+│   ├── run_eval.py               # Evaluation script for Whisper, Voxtral
+│   └── run_*.sh                  # Model-specific batch scripts
+│
+├── nemo_asr/                      # NVIDIA NeMo framework
+│   ├── run_eval.py               # Evaluation script for Canary, Parakeet
+│   └── run_*.sh                  # Model-specific batch scripts
+│
+├── phi/                           # Microsoft Phi framework
+│   ├── run_eval.py               # Evaluation script for Phi-4 Multimodal
+│   └── run_phi4_multimodal.sh    # Batch script
+│
+├── api/                           # API-based models
+│   ├── run_eval.py               # Evaluation script for ElevenLabs
+│   └── run_api.sh                # Batch script
+│
+├── normalizer/                    # Text normalization utilities
+│   ├── data_utils.py             # Dataset loading & Spanish text normalization
+│   ├── eval_utils.py             # Metrics calculation (WER, RTFx)
+│   ├── normalizer.py             # Multilingual text normalizer
+│   └── english_abbreviations.py  # English abbreviations (legacy)
+│
+├── requirements/                  # Framework-specific dependencies
+│   ├── requirements.txt          # Base: torch, transformers, datasets
+│   ├── requirements_nemo.txt     # NeMo ASR (Canary, Parakeet)
+│   ├── requirements_phi.txt      # Phi-4 (flash-attn, peft)
+│   └── requirements-api.txt      # API clients (ElevenLabs, OpenAI)
+│
+├── results/                       # Evaluation results (auto-generated)
+│   └── *.jsonl                   # Per-model result files
+│
+└── README.md                      # This file
+```
+
+---
+
+## Text Normalization for Spanish
+
+### Why This Matters
+
+Spanish uses **diacritical marks** (accents) that change word meaning:
+- `esta` (this) vs. `está` (is)
+- `si` (if) vs. `sí` (yes)
+- `el` (the) vs. `él` (he)
+
+The original Open ASR Leaderboard uses an **English text normalizer** that removes all diacritics, which is inappropriate for Spanish evaluation.
+
+### Our Approach
+
+This repository uses a **multilingual normalizer** configured to preserve Spanish characters:
+
+```python
+# In normalizer/data_utils.py
+normalizer = BasicMultilingualTextNormalizer(remove_diacritics=False)
+```
+
+**What it does:**
+- ✅ Preserves: `á, é, í, ó, ú, ñ, ü, ¿, ¡`
+- ✅ Removes: Brackets `[...]`, parentheses `(...)`, special symbols
+- ✅ Normalizes: Whitespace, capitalization (converts to lowercase)
+- ❌ Does NOT remove: Accents or Spanish-specific characters
+
+**Example:**
+```python
+Input:  "¿Cómo estás? [ruido] (suspiro)"
+Output: "cómo estás"
+```
+
+---
+
+## GPU Requirements & Batch Sizes
+
+### Recommended Hardware
+
+| Model | Min VRAM | Recommended VRAM | Default Batch Size | CPU Possible? |
+|-------|----------|------------------|-------------------|---------------|
+| Whisper Large V3 | 16GB | 24GB | 16 | ⚠️ Very slow |
+| Whisper V3 Turbo | 12GB | 16GB | 16 | ⚠️ Very slow |
+| Canary 1B V2 | 20GB | 24GB | 32 | ❌ No |
+| Parakeet TDT 0.6B | 12GB | 16GB | 32 | ⚠️ Very slow |
+| Phi-4 Multimodal | 24GB | 40GB | 4 | ❌ No |
+| Voxtral Mini 3B | 16GB | 24GB | 8 | ⚠️ Very slow |
+| ElevenLabs Scribe | N/A (API) | N/A | N/A | ✅ Yes |
+
+### Adjusting Batch Size
+
+If you encounter **Out of Memory (OOM)** errors, reduce the batch size:
+
+```bash
+# Example: Reduce Whisper batch size from 16 to 8
+python transformers/run_eval.py \
+    --model_id "openai/whisper-large-v3" \
+    --batch_size 8 \  # Reduced from default 16
+    ...
+```
+
+### Multi-GPU Evaluation
+
+To run evaluations across multiple GPUs in parallel:
+
+```bash
+# Terminal 1 - GPU 0
+DEVICE=0 python transformers/run_eval.py --model_id "openai/whisper-large-v3" ...
+
+# Terminal 2 - GPU 1
+DEVICE=1 python nemo_asr/run_eval.py --model_id "nvidia/canary-1b-v2" ...
+```
+
+---
+
+## Troubleshooting
+
+### Out of Memory (OOM) Errors
+
+**Symptoms:**
+```
+RuntimeError: CUDA out of memory. Tried to allocate 2.5 GiB
+```
+
+**Solutions:**
+1. Reduce `--batch_size`:
+   ```bash
+   --batch_size 4  # Try halving the default
+   ```
+2. Use gradient checkpointing (Whisper):
+   ```bash
+   --torch_compile  # Can reduce memory usage
+   ```
+3. Switch to a smaller model variant
+
+### Model Download Issues
+
+**Symptoms:**
+```
+HTTPError: 403 Forbidden
+```
+
+**Solutions:**
+1. Authenticate with Hugging Face:
+   ```bash
+   huggingface-cli login
+   ```
+2. Check disk space:
+   ```bash
+   df -h  # Ensure >50GB free
+   ```
+3. Manually download model:
+   ```bash
+   huggingface-cli download openai/whisper-large-v3
+   ```
+
+### NeMo CUDA Version Issues
+
+**Symptoms:**
+```
+RuntimeError: CUDA kernel launch failed
+```
+
+**Solution:**
+NeMo requires CUDA 12.6+. Check version:
+```bash
+nvidia-smi  # Look for "CUDA Version: 12.6"
+```
+
+If version is too old, upgrade CUDA toolkit or use Whisper models instead.
+
+### API Rate Limiting (ElevenLabs)
+
+**Symptoms:**
+```
+HTTPError: 429 Too Many Requests
+```
+
+**Solution:**
+Reduce concurrency:
+```bash
+python api/run_eval.py --max_workers 10  # Reduced from default 50
+```
+
+### Voxtral Evaluation Fails
+
+**Symptoms:**
+Model may not support audio input or requires special configuration.
+
+**Solution:**
+Check the [model card](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) for audio input requirements. If unsupported, exclude from batch evaluation by commenting out in `evaluate_chilean_asr.sh`.
+
+---
+
+## Model-Specific Notes
+
+### Whisper (OpenAI)
+- Natively supports 99 languages including Spanish
+- No special prompting required
+- Best overall accuracy for Chilean Spanish in most cases
+
+### Canary (NVIDIA)
+- Multilingual model trained on English, Spanish, German, French
+- Optimized for low-latency inference
+- May require language hints for best results
+
+### Parakeet (NVIDIA)
+- Lightweight, fast model
+- Good for real-time applications
+- Trade-off: Speed vs. accuracy
+
+### Phi-4 Multimodal (Microsoft)
+- **Requires explicit Spanish prompt**: `"Transcribe el audio a texto en español."`
+- Multimodal model (can handle images + audio)
+- Largest model (14B parameters) - needs 24GB+ VRAM
+
+### Voxtral (Mistral)
+- Relatively new ASR model from Mistral AI
+- May require special handling - check if it supports direct audio input
+- If evaluation fails, verify model card for audio input format
+
+### ElevenLabs Scribe
+- **API-based** - requires internet connection and valid API key
+- **Costs apply** - check ElevenLabs pricing
+- High accuracy but slower than local models due to network latency
+- Good for comparing against commercial solutions
+
+---
+
+## Advanced Usage
+
+### Evaluate on a Subset of Data
+
+Test quickly with a limited number of samples:
+
+```bash
+python transformers/run_eval.py \
+    --model_id "openai/whisper-large-v3" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --max_eval_samples 100 \  # Only evaluate 100 samples
+    --device 0
+```
+
+### Using Streaming Mode
+
+For very large datasets, stream instead of downloading:
+
+```bash
+python transformers/run_eval.py \
+    --model_id "openai/whisper-large-v3" \
+    --dataset_path "astroza" \
+    --dataset "es-cl-asr-test-only" \
+    --streaming \  # Remove --no-streaming flag
+    --device 0
+```
+
+**Note**: Streaming may be slower but uses less disk space.
+
+### Custom Warmup Steps
+
+Adjust the number of warmup iterations before timed evaluation:
+
+```bash
+python transformers/run_eval.py \
+    --warmup_steps 20 \  # Default: 10
+    ...
+```
+
+---
+
+## Citation
+
+If you use this evaluation framework or results, please cite both the Chilean Spanish dataset and the original Open ASR Leaderboard:
+
+```bibtex
+@misc{astroza2024chilean,
+  title={Chilean Spanish ASR Test Dataset},
+  author={Astroza},
+  year={2024},
+  howpublished={\url{https://huggingface.co/datasets/astroza/es-cl-asr-test-only}}
+}
+
+@misc{open-asr-leaderboard,
+  title={Open Automatic Speech Recognition Leaderboard},
+  author={Srivastav, Vaibhav and Majumdar, Somshubra and Koluguri, Nithin and Moumen, Adel and Gandhi, Sanchit and Hugging Face Team and Nvidia NeMo Team},
+  year={2023},
+  publisher={Hugging Face},
+  howpublished={\url{https://huggingface.co/spaces/hf-audio/open_asr_leaderboard}}
+}
+```
+
+---
+
+## Contributing
+
+This repository is a specialized fork focused on Chilean Spanish ASR evaluation. For contributions:
+
+1. **Bug fixes & improvements**: Open an issue or pull request
+2. **Adding new models**: Ensure they support Spanish and follow the existing evaluation structure
+3. **General ASR leaderboard features**: Contribute to the upstream [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard)
+
+---
+
+## License
+
+This repository maintains the same license as the original [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard). It is provided as-is for research and evaluation purposes.
+
+---
+
+## Acknowledgments
+
+- **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework
+- **Astroza** for creating and sharing the Chilean Spanish ASR test dataset
+- All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models
+
+---
+
+## Support
+
+For issues specific to:
+- **This Chilean Spanish adaptation**: Open an issue in this repository
+- **Original Open ASR Leaderboard framework**: Visit [huggingface/open_asr_leaderboard](https://github.com/huggingface/open_asr_leaderboard)
+- **Dataset issues**: Contact the [dataset author](https://huggingface.co/datasets/astroza/es-cl-asr-test-only)
+- **Model-specific problems**: Check the respective model cards on Hugging Face
