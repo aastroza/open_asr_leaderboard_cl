@@ -79,7 +79,41 @@ Following the Open ASR Leaderboard standard, we report:
 
 ---
 
-## Quick Start
+## Evaluation Methods
+
+This repository supports two evaluation methods:
+
+### 1. **Local Evaluation** (Default)
+Run evaluations on your local GPU using the scripts in `transformers/`, `nemo_asr/`, `phi/`, and `api/` directories.
+- ✅ Full control over hardware
+- ✅ No cloud costs
+- ❌ Limited by single GPU
+- ❌ Requires CUDA setup
+
+**See the sections below for local evaluation setup and usage.**
+
+### 2. **Modal Cloud Evaluation** (NEW - Recommended for Speed)
+Run evaluations 10-50x faster using distributed GPUs in the cloud via [Modal](https://modal.com).
+- ✅ 10-50x faster (parallel processing)
+- ✅ No local GPU required
+- ✅ Pay only for seconds used
+- ✅ Easy setup (`modal setup`)
+- ❌ Requires internet connection
+
+**📖 See [`modal_app/README.md`](modal_app/README.md) for Modal evaluation setup and usage.**
+
+**Quick Modal Start:**
+```bash
+cd modal_app
+uv sync
+modal setup
+modal run run.py::stage_data  # One-time dataset staging
+modal run run.py::batch_transcription --model_id nvidia/parakeet-tdt-0.6b-v3
+```
+
+---
+
+## Quick Start (Local Evaluation)
 
 ### Prerequisites
 

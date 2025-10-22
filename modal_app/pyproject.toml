@@ -1,0 +1,10 @@
+[project]
+name = "chilean-asr-modal"
+version = "0.1.0"
+description = "Chilean Spanish ASR evaluation on Modal with NeMo and Transformers models."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.0.0",
+    "modal>=1.0.5",
+]
