@@ -27,11 +27,12 @@ nemo_transcription_image = (
             "CC": "g++",
         }
     )
-    .apt_install("ffmpeg")
+    .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
             "torch==2.7.1",
             "evaluate==0.4.3",
             "librosa==0.11.0",
+            "soundfile==0.13.1",
             "hf_transfer==0.1.9",
             "huggingface_hub[hf-xet]==0.32.4",
             "cuda-python==12.8.0",
@@ -53,7 +54,7 @@ transformers_transcription_image = (
             "HF_HOME": MODELS_VOLPATH,
         }
     )
-    .apt_install("ffmpeg")
+    .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
             "torch==2.7.1",
             "transformers==4.48.1",
@@ -72,7 +73,7 @@ transformers_transcription_image = (
 
 data_download_image = (
     modal.Image.debian_slim(python_version=_PYTHON_VERSION)
-    .apt_install("ffmpeg")
+    .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
         "datasets[audio]==4.0.0",
         "torch==2.7.1",
@@ -83,6 +84,7 @@ data_download_image = (
 
 runner_image = (
     modal.Image.debian_slim(python_version=_PYTHON_VERSION)
+    .apt_install("libsndfile1")
     .pip_install(
             "pandas==2.3.1",
             "numpy==2.2.6",
