@@ -31,7 +31,14 @@ def stage_data():
     for data_dict in download_hf_dataset.starmap(DATASET_CONFIG):
         if data_dict is not None:
             prepped_datasets.append(datasets.Dataset.from_dict(data_dict))
+        else:
+            print("Warning: One of the dataset processing jobs returned None")
 
+    if not prepped_datasets:
+        print("Error: No datasets were successfully processed. Check the logs above for errors.")
+        return
+
+    print(f"Successfully processed {len(prepped_datasets)} dataset(s)")
     full_ds = datasets.concatenate_datasets(prepped_datasets).sort("audio_length_s", reverse=True)
 
     with tempfile.TemporaryFile() as temp_file:
@@ -65,8 +72,8 @@ def batch_transcription_nemo(*args):
     parser.add_argument(
         "--dataset",
         type=str,
-        default="es-cl-asr-test-only",
-        help="Dataset name (e.g., 'es-cl-asr-test-only')",
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
     )
     parser.add_argument(
         "--split",
@@ -135,8 +142,8 @@ def batch_transcription_transformers(*args):
     parser.add_argument(
         "--dataset",
         type=str,
-        default="es-cl-asr-test-only",
-        help="Dataset name (e.g., 'es-cl-asr-test-only')",
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
     )
     parser.add_argument(
         "--split",

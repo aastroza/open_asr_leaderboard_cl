@@ -9,7 +9,7 @@ from app.common import DATASETS_VOLPATH
 DEFAULT_MAX_THREADS = 32
 
 # Chilean Spanish dataset configuration
-CHILEAN_DATASET_NAME = "es-cl-asr-test-only"
+CHILEAN_DATASET_NAME = "es-cl-asr-test-only-full"
 CHILEAN_DATASET_PATH = "astroza"  # HuggingFace dataset path
 
 DATASET_STORAGE_NAME = "chilean-spanish-asr-test"
@@ -17,8 +17,10 @@ DATASETPATH_HF = f"{CHILEAN_DATASET_PATH}/{CHILEAN_DATASET_NAME}"
 DATASETPATH_MODAL = f"{DATASETS_VOLPATH}/{DATASET_STORAGE_NAME}"
 
 # Dataset configuration for staging
+# Format: (dataset_path, config_name, split)
+# Since the dataset doesn't have a specific config, use None for config_name
 DATASET_CONFIG = [
-    (DATASETPATH_HF, CHILEAN_DATASET_NAME, "test"),
+    (DATASETPATH_HF, None, "test"),
 ]
 
 def distribute_audio(df, num_requests):

@@ -73,12 +73,14 @@ transformers_transcription_image = (
 
 data_download_image = (
     modal.Image.debian_slim(python_version=_PYTHON_VERSION)
-    .apt_install("ffmpeg", "libsndfile1")
+    .apt_install("ffmpeg", "libsndfile1", "libavcodec-dev", "libavformat-dev", "libavutil-dev")
     .pip_install(
-        "datasets[audio]==4.0.0",
-        "torch==2.7.1",
-        "soundfile==0.13.1"
+        "datasets==3.1.0",  # Use older version to avoid torchcodec dependency
+        "torch==2.4.0",     # Use compatible PyTorch version
+        "soundfile==0.13.1",
+        "librosa==0.10.2"   # Add librosa for audio processing
     )
+    .env({"DATASET_AUDIO_BACKEND": "soundfile"})  # Force soundfile backend
     .add_local_dir("utils", remote_path="/root/utils")
 )
 

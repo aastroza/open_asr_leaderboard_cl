@@ -1,7 +1,7 @@
 from datasets import load_dataset, Audio
-from normalizer import EnglishTextNormalizer, BasicMultilingualTextNormalizer
+from ..normalizer.normalizer import EnglishTextNormalizer, BasicMultilingualTextNormalizer
 
-from .eval_utils import read_manifest, write_manifest
+from ..normalizer.eval_utils import read_manifest, write_manifest
 
 
 def is_target_text_in_range(ref):

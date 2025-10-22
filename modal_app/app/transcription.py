@@ -262,7 +262,8 @@ class TranscriptionRunner():
             result['job_id'] = cfg.job_id
             result['audio_length_s'] = df['audio_length_s'].tolist()
             result['original_text'] = df['text'].tolist()
-            result['dataset'] = [cfg.dataset] * len(df)
+            # Use the actual dataset values from the DataFrame instead of cfg.dataset
+            result['dataset'] = df['dataset'].tolist()
             result['split'] = [cfg.split] * len(df)
 
         print("Scoring results...")
@@ -295,12 +296,92 @@ class TranscriptionRunner():
         return results
 
     def save_results(self, results, cfg):
-        # save the results to a csv
-        results_df = pd.DataFrame(results)
+        # Expand the results properly - each result dict contains lists that need to be expanded
+        expanded_rows = []
+        for result in results:
+            # Each result is a batch with lists of values
+            num_samples = len(result['transcriptions'])
+            for i in range(num_samples):
+                row = {
+                    'transcriptions': result['transcriptions'][i],
+                    'original_text': result['original_text'][i],
+                    'audio_length_s': result['audio_length_s'][i],
+                    'dataset': result['dataset'][i],
+                    'split': result['split'][i],
+                    'total_runtime': result['total_runtime'],
+                    'job_id': result['job_id'],
+                    'batch_wer': result['wer'],  # Keep batch-level metrics for reference
+                    'batch_rtfx': result['rtfx'],
+                    'batch_total_time': result['total_time']
+                }
+                expanded_rows.append(row)
+        
+        # Create DataFrame from expanded rows
+        results_df = pd.DataFrame(expanded_rows)
+        
+        # Also create a batch-level summary (original format)
+        batch_summary = []
+        for result in results:
+            batch_row = {
+                'num_samples': len(result['transcriptions']),
+                'total_time': result['total_time'],
+                'total_runtime': result['total_runtime'],
+                'job_id': result['job_id'],
+                'wer': result['wer'],
+                'rtfx': result['rtfx'],
+                'total_audio_length': sum(result['audio_length_s'])
+            }
+            batch_summary.append(batch_row)
+        
+        batch_df = pd.DataFrame(batch_summary)
 
         results_summary_dir = Path(f"{RESULTS_VOLPATH}/results_summaries")
         results_summary_dir.mkdir(parents=True, exist_ok=True)
-        results_df.drop(columns=['transcriptions', 'original_text', 'audio_length_s', 'dataset', 'split'],inplace=False).to_csv(results_summary_dir / f"results_summary_{cfg.job_id}.csv", index=False)
+        
+        # Save batch-level summary (existing functionality)
+        batch_df.to_csv(results_summary_dir / f"results_summary_{cfg.job_id}.csv", index=False)
+
+        # Save aggregated results by dataset
+        if 'dataset' in results_df.columns:
+            print("Creating dataset summary...")
+            print(f"Unique datasets: {results_df['dataset'].unique()}")
+            
+            # Group by dataset and recalculate metrics properly
+            dataset_groups = results_df.groupby('dataset')
+            
+            dataset_summary_data = []
+            wer_metric = evaluate.load("wer")
+            
+            for dataset_name, group in dataset_groups:
+                # Recalculate WER for this dataset
+                normalized_predictions = [du.normalizer(pred) for pred in group['transcriptions']]
+                normalized_references = [du.normalizer(ref) for ref in group['original_text']]
+                dataset_wer = wer_metric.compute(references=normalized_references, predictions=normalized_predictions)
+                dataset_wer = round(100 * dataset_wer, 2)
+                
+                # Calculate total audio length and time
+                total_audio_length = group['audio_length_s'].sum()
+                total_time = group['batch_total_time'].sum()  # Sum all batch times
+                
+                # Calculate RTFx
+                rtfx = total_audio_length / total_time if total_time > 0 else 0
+                
+                dataset_summary_data.append({
+                    'dataset': dataset_name,
+                    'num_samples': len(group),
+                    'total_time': total_time,
+                    'total_runtime': group['total_runtime'].iloc[0],
+                    'job_id': group['job_id'].iloc[0],
+                    'wer': dataset_wer,
+                    'rtfx': round(rtfx, 2),
+                    'total_audio_length': total_audio_length
+                })
+            
+            dataset_summary = pd.DataFrame(dataset_summary_data)
+            dataset_summary.to_csv(results_summary_dir / f"results_by_dataset_{cfg.job_id}.csv", index=False)
+            print(f"Dataset summary saved to {results_summary_dir / f'results_by_dataset_{cfg.job_id}.csv'}")
+            print("Dataset summary:")
+            print(dataset_summary)
 
         results_dir = Path(f"{RESULTS_VOLPATH}/results")
         results_dir.mkdir(parents=True, exist_ok=True)

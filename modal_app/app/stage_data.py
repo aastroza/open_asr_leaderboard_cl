@@ -3,6 +3,7 @@ import os
 import numpy as np
 import datasets
 import soundfile
+import modal
 
 from app.common import (
     app, data_download_image, dataset_volume, DATASETS_VOLPATH
@@ -16,25 +17,35 @@ from utils.data import DEFAULT_MAX_THREADS, DATASETPATH_MODAL
     },
     cpu=DEFAULT_MAX_THREADS,
     timeout=60*60,
+    secrets=[modal.Secret.from_dotenv()]
 )
 def download_hf_dataset(dataset_path, dataset_name, split):
     """
     Downloads a HuggingFace dataset and prepares it for Modal.
 
     Args:
-        dataset_path: HuggingFace dataset path (e.g., 'astroza')
-        dataset_name: Dataset name (e.g., 'es-cl-asr-test-only')
+        dataset_path: HuggingFace dataset path (e.g., 'astroza/es-cl-asr-test-only')
+        dataset_name: Dataset config name (can be None for default config)
         split: Dataset split (e.g., 'test')
 
     Returns:
         Dictionary containing prepared dataset data
     """
 
-    dataset_path_dest = f"{DATASETPATH_MODAL}/{dataset_name}/{split}"
+    # Use dataset_path as the key for storage if dataset_name is None
+    storage_key = dataset_name if dataset_name else dataset_path.split('/')[-1]
+    dataset_path_dest = f"{DATASETPATH_MODAL}/{storage_key}/{split}"
     os.makedirs(dataset_path_dest, exist_ok=True)
 
-    ds = datasets.load_dataset(dataset_path, dataset_name, split=split, token=True)
+    # Load dataset with or without config name
+    if dataset_name:
+        ds = datasets.load_dataset(dataset_path, dataset_name, split=split, token=True)
+    else:
+        ds = datasets.load_dataset(dataset_path, split=split, token=True)
 
+    # Set audio backend to avoid torchcodec issues
+    os.environ["DATASET_AUDIO_BACKEND"] = "soundfile"
+    
     def prepare_data(batch):
         filenames = []
         filepaths = []
@@ -65,6 +76,9 @@ def download_hf_dataset(dataset_path, dataset_name, split):
         return batch
 
     try:
+        # Explicitly cast audio column to use soundfile backend
+        ds = ds.cast_column("audio", datasets.Audio(sampling_rate=None, decode=True))
+        
         ds = ds.map(
             prepare_data,
             batched=True,
