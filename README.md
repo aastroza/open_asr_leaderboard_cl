@@ -542,83 +542,6 @@ Check the [model card](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507) fo
 
 ---
 
-## Model-Specific Notes
-
-### Whisper (OpenAI)
-- Natively supports 99 languages including Spanish
-- No special prompting required
-- Best overall accuracy for Chilean Spanish in most cases
-
-### Canary (NVIDIA)
-- Multilingual model trained on English, Spanish, German, French
-- Optimized for low-latency inference
-- May require language hints for best results
-
-### Parakeet (NVIDIA)
-- Lightweight, fast model
-- Good for real-time applications
-- Trade-off: Speed vs. accuracy
-
-### Phi-4 Multimodal (Microsoft)
-- **Requires explicit Spanish prompt**: `"Transcribe el audio a texto en español."`
-- Multimodal model (can handle images + audio)
-- Largest model (14B parameters) - needs 24GB+ VRAM
-
-### Voxtral (Mistral)
-- Relatively new ASR model from Mistral AI
-- May require special handling - check if it supports direct audio input
-- If evaluation fails, verify model card for audio input format
-
-### ElevenLabs Scribe
-- **API-based** - requires internet connection and valid API key
-- **Costs apply** - check ElevenLabs pricing
-- High accuracy but slower than local models due to network latency
-- Good for comparing against commercial solutions
-
----
-
-## Advanced Usage
-
-### Evaluate on a Subset of Data
-
-Test quickly with a limited number of samples:
-
-```bash
-python transformers/run_eval.py \
-    --model_id "openai/whisper-large-v3" \
-    --dataset_path "astroza" \
-    --dataset "es-cl-asr-test-only" \
-    --max_eval_samples 100 \  # Only evaluate 100 samples
-    --device 0
-```
-
-### Using Streaming Mode
-
-For very large datasets, stream instead of downloading:
-
-```bash
-python transformers/run_eval.py \
-    --model_id "openai/whisper-large-v3" \
-    --dataset_path "astroza" \
-    --dataset "es-cl-asr-test-only" \
-    --streaming \  # Remove --no-streaming flag
-    --device 0
-```
-
-**Note**: Streaming may be slower but uses less disk space.
-
-### Custom Warmup Steps
-
-Adjust the number of warmup iterations before timed evaluation:
-
-```bash
-python transformers/run_eval.py \
-    --warmup_steps 20 \  # Default: 10
-    ...
-```
-
----
-
 ## Citation
 
 If you use this evaluation framework or results, please cite both the Chilean Spanish dataset and the original Open ASR Leaderboard:
@@ -626,8 +549,8 @@ If you use this evaluation framework or results, please cite both the Chilean Sp
 ```bibtex
 @misc{astroza2024chilean,
   title={Chilean Spanish ASR Test Dataset},
-  author={Astroza},
-  year={2024},
+  author={Alonso Astroza},
+  year={2025},
   howpublished={\url{https://huggingface.co/datasets/astroza/es-cl-asr-test-only}}
 }
 
@@ -661,7 +584,6 @@ This repository maintains the same license as the original [Open ASR Leaderboard
 ## Acknowledgments
 
 - **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework
-- **Astroza** for creating and sharing the Chilean Spanish ASR test dataset
 - All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models
 
 ---
