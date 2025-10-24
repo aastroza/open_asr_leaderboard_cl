@@ -583,8 +583,9 @@ This repository maintains the same license as the original [Open ASR Leaderboard
 
 ## Acknowledgments
 
-- **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework
-- All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models
+- **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework.
+- All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models.
+- **Thank you [Modal](https://modal.com/)** for the compute used in developing this project.
 
 ---
 
