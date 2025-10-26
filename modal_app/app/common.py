@@ -113,22 +113,28 @@ phi4_multimodal_image = (
     )
     .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
-            "torch==2.7.1",  # Install torch first
+            "wheel",
+            "torch==2.6.0",
+            "torchvision==0.21.0",
+            "torchaudio",
         )
     .pip_install(
-            "flash-attn>=2.0.0",  # Install flash-attn after torch
+            "flash-attn==2.7.4.post1",  # Install flash-attn after torch
         )
     .pip_install(
-            "transformers>=4.48.0",
+            "transformers==4.48.2",
             "accelerate==1.3.0",
-            "evaluate==0.4.3",
-            "librosa==0.11.0",
+            "evaluate",
+            "datasets",
+            "librosa",
+            "jiwer",
+            "soundfile",
+            "pillow",
+            "scipy",
+            "peft==0.13.2",
+            "backoff==2.2.1",
             "hf_transfer==0.1.9",
             "huggingface_hub[hf-xet]>=0.34.0",
-            "datasets[audio]==4.0.0",
-            "soundfile==0.13.1",
-            "jiwer==4.0.0",
-            "scipy>=1.10.0",
         )
     .entrypoint([])
     .add_local_dir("utils", remote_path="/root/utils")
