@@ -8,6 +8,7 @@ from app.common import (
     app,
     nemo_transcription_image,
     transformers_transcription_image,
+    voxtral_transcription_image,
     runner_image,
     dataset_volume,
     model_volume,
@@ -103,7 +104,7 @@ class NeMoAsrBatchTranscription():
 
 
 # ============================================================================
-# Transformers Models (Whisper, Voxtral)
+# Transformers Models (Whisper)
 # ============================================================================
 
 with transformers_transcription_image.imports():
@@ -198,6 +199,95 @@ class TransformersAsrBatchTranscription():
 
 
 # ============================================================================
+# Voxtral Models
+# ============================================================================
+
+with voxtral_transcription_image.imports():
+    import torch
+    from transformers import AutoProcessor, VoxtralForConditionalGeneration
+    import evaluate
+    import utils.normalizer.data_utils as du
+    from pathlib import Path
+    import time
+    from utils.data import copy_concurrent
+
+
+@app.cls(
+    image=voxtral_transcription_image,
+    timeout=60*MINUTES,
+    volumes={
+        DATASETS_VOLPATH: dataset_volume,
+        MODELS_VOLPATH: model_volume,
+        RESULTS_VOLPATH: results_volume,
+    },
+    scaledown_window=5,
+)
+class VoxtralAsrBatchTranscription():
+    DEFAULT_MODEL_ID = "mistralai/Voxtral-Mini-3B-2507"
+    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_BATCH_SIZE = 8
+    DEFAULT_NUM_REQUESTS = 10
+    model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
+    gpu_batch_size: int = modal.parameter(default=DEFAULT_BATCH_SIZE)
+
+
+    @modal.enter()
+    def setup(self):
+
+        self._COMPUTE_DTYPE = torch.bfloat16
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        # Voxtral uses VoxtralForConditionalGeneration
+        self.processor = AutoProcessor.from_pretrained(self.model_id)
+        self.model = VoxtralForConditionalGeneration.from_pretrained(
+            self.model_id,
+            torch_dtype=self._COMPUTE_DTYPE,
+            device_map=self.device
+        )
+
+    @modal.method()
+    async def run_inference(self, audio_filepaths):
+
+        local_filepaths = [path.replace(DATASETPATH_MODAL, '/tmp') for path in audio_filepaths]
+        filenames = [filepath.split('/')[-1] for filepath in local_filepaths]
+
+        copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
+
+        start_time = time.perf_counter()
+
+        # Voxtral-specific transcription using apply_transcription_request
+        transcriptions = []
+        for filepath in local_filepaths:
+            # Process each audio file individually for Voxtral
+            inputs = self.processor.apply_transcription_request(
+                language="es",  # Spanish target language
+                audio=filepath,
+                model_id=self.model_id
+            )
+            inputs = inputs.to(self.device, dtype=self._COMPUTE_DTYPE)
+
+            # Generate transcription
+            with torch.inference_mode():
+                outputs = self.model.generate(**inputs, max_new_tokens=500)
+
+            # Decode output
+            decoded = self.processor.batch_decode(
+                outputs[:, inputs.input_ids.shape[1]:],
+                skip_special_tokens=True
+            )
+            transcriptions.extend(decoded)
+
+        total_time = time.perf_counter() - start_time
+        print("Total time:", total_time)
+
+        return {
+            "num_samples": len(filenames),
+            "transcriptions": transcriptions,
+            "total_time": total_time,
+        }
+
+
+# ============================================================================
 # Runner for Scoring and Saving Results
 # ============================================================================
 
@@ -217,7 +307,7 @@ with runner_image.imports():
 )
 class TranscriptionRunner():
     num_requests: int = modal.parameter()
-    model_type: str = modal.parameter(default="nemo")  # "nemo" or "transformers"
+    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", or "voxtral"
 
     @modal.method()
     def run_transcription(self, cfg):
@@ -242,7 +332,14 @@ class TranscriptionRunner():
                 model_id=cfg.model_id,
                 gpu_batch_size=cfg.gpu_batch_size,
             )
-        else:  # transformers
+        elif self.model_type == "voxtral":
+            transcription_cls = VoxtralAsrBatchTranscription.with_options(
+                gpu=cfg.gpu_type,
+            )(
+                model_id=cfg.model_id,
+                gpu_batch_size=cfg.gpu_batch_size,
+            )
+        else:  # transformers (Whisper)
             transcription_cls = TransformersAsrBatchTranscription.with_options(
                 gpu=cfg.gpu_type,
             )(

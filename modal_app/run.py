@@ -11,6 +11,7 @@ from app.stage_data import download_hf_dataset
 from app.transcription import (
     NeMoAsrBatchTranscription,
     TransformersAsrBatchTranscription,
+    VoxtralAsrBatchTranscription,
     TranscriptionRunner,
 )
 from utils.data import DATASET_CONFIG, DATASET_STORAGE_NAME
@@ -123,14 +124,14 @@ def batch_transcription_nemo(*args):
 @app.local_entrypoint()
 def batch_transcription_transformers(*args):
     """
-    Run batch transcription using Transformers models (Whisper, Voxtral).
+    Run batch transcription using Transformers models (Whisper).
 
     Usage:
         modal run run.py::batch_transcription_transformers --model_id openai/whisper-large-v3
         modal run run.py::batch_transcription_transformers --model_id openai/whisper-large-v3-turbo --gpu-batch-size 24
     """
 
-    print("Running Transformers ASR batch transcription")
+    print("Running Transformers (Whisper) ASR batch transcription")
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -187,6 +188,76 @@ def batch_transcription_transformers(*args):
     print(cfg)
 
     runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="transformers")
+    runner.run_transcription.remote(cfg)
+
+
+@app.local_entrypoint()
+def batch_transcription_voxtral(*args):
+    """
+    Run batch transcription using Voxtral models.
+
+    Usage:
+        modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-3B-2507
+        modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-3B-2507 --gpu-batch-size 8
+    """
+
+    print("Running Voxtral ASR batch transcription")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default=VoxtralAsrBatchTranscription.DEFAULT_MODEL_ID,
+        help="Model identifier. Should be a Voxtral model.",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        help="Dataset split (e.g., 'test')",
+    )
+    parser.add_argument(
+        "--gpu-type",
+        type=str,
+        default=VoxtralAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        help="The GPU type to run the pipeline on.",
+    )
+    parser.add_argument(
+        "--gpu-batch-size",
+        type=int,
+        default=VoxtralAsrBatchTranscription.DEFAULT_BATCH_SIZE,
+        help="Number of samples to go through each streamed batch.",
+    )
+    parser.add_argument(
+        "--num-requests",
+        type=int,
+        default=VoxtralAsrBatchTranscription.DEFAULT_NUM_REQUESTS,
+        help="Number of calls to make to the run_inference method.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default="results",
+        help="Path to save the combined CSV file",
+    )
+    parser.add_argument(
+        "--job-id",
+        type=str,
+        default=f"Voxtral_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
+        help="Job ID.",
+    )
+    cfg = parser.parse_args(args=args)
+
+    print("Job Config:")
+    print(cfg)
+
+    runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="voxtral")
     runner.run_transcription.remote(cfg)
 
 
@@ -257,6 +328,9 @@ def batch_transcription(*args):
     if "nvidia" in cfg.model_id.lower() or "nemo" in cfg.model_id.lower():
         model_type = "nemo"
         default_batch_size = 32
+    elif "voxtral" in cfg.model_id.lower():
+        model_type = "voxtral"
+        default_batch_size = 8
     else:
         model_type = "transformers"
         default_batch_size = 16
