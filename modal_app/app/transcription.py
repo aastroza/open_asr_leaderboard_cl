@@ -9,6 +9,7 @@ from app.common import (
     nemo_transcription_image,
     transformers_transcription_image,
     voxtral_transcription_image,
+    phi4_multimodal_image,
     runner_image,
     dataset_volume,
     model_volume,
@@ -288,6 +289,115 @@ class VoxtralAsrBatchTranscription():
 
 
 # ============================================================================
+# Phi-4 Multimodal Models
+# ============================================================================
+
+with phi4_multimodal_image.imports():
+    import torch
+    from transformers import AutoProcessor, AutoModelForCausalLM, GenerationConfig
+    import evaluate
+    import utils.normalizer.data_utils as du
+    from pathlib import Path
+    import time
+    from utils.data import copy_concurrent
+    import soundfile
+
+
+@app.cls(
+    image=phi4_multimodal_image,
+    timeout=60*MINUTES,
+    volumes={
+        DATASETS_VOLPATH: dataset_volume,
+        MODELS_VOLPATH: model_volume,
+        RESULTS_VOLPATH: results_volume,
+    },
+    scaledown_window=5,
+)
+class Phi4MultimodalAsrBatchTranscription():
+    DEFAULT_MODEL_ID = "microsoft/Phi-4-multimodal-instruct"
+    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_BATCH_SIZE = 4
+    DEFAULT_NUM_REQUESTS = 10
+    model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
+    gpu_batch_size: int = modal.parameter(default=DEFAULT_BATCH_SIZE)
+
+
+    @modal.enter()
+    def setup(self):
+
+        self._COMPUTE_DTYPE = torch.bfloat16
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        # Initialize Phi-4 multimodal model
+        self.processor = AutoProcessor.from_pretrained(
+            self.model_id,
+            trust_remote_code=True
+        )
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_id,
+            trust_remote_code=True,
+            torch_dtype='auto',
+            _attn_implementation='flash_attention_2',
+        ).cuda()
+
+        self.generation_config = GenerationConfig.from_pretrained(
+            self.model_id,
+            'generation_config.json'
+        )
+
+        # Define prompts for Phi-4
+        self.user_prompt = '<|user|>'
+        self.assistant_prompt = '<|assistant|>'
+        self.prompt_suffix = '<|end|>'
+
+    @modal.method()
+    async def run_inference(self, audio_filepaths):
+
+        local_filepaths = [path.replace(DATASETPATH_MODAL, '/tmp') for path in audio_filepaths]
+        filenames = [filepath.split('/')[-1] for filepath in local_filepaths]
+
+        copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
+
+        start_time = time.perf_counter()
+
+        # Phi-4 transcription - process each file individually
+        transcriptions = []
+        for filepath in local_filepaths:
+            # Transcribe Spanish audio to text
+            speech_prompt = "Transcribe este audio en español a texto."
+
+            prompt = f'{self.user_prompt}<|audio_1|>{speech_prompt}{self.prompt_suffix}{self.assistant_prompt}'
+            audio = soundfile.read(filepath)
+
+            inputs = self.processor(text=prompt, audios=[audio], return_tensors='pt').to('cuda')
+
+            # Generate transcription
+            with torch.inference_mode():
+                generate_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=2000,
+                    generation_config=self.generation_config,
+                )
+
+            generate_ids = generate_ids[:, inputs['input_ids'].shape[1]:]
+
+            transcription = self.processor.batch_decode(
+                generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )[0]
+
+            transcriptions.append(transcription.strip())
+
+        total_time = time.perf_counter() - start_time
+        print("Total time:", total_time)
+
+        return {
+            "num_samples": len(filenames),
+            "transcriptions": transcriptions,
+            "total_time": total_time,
+        }
+
+
+# ============================================================================
 # Runner for Scoring and Saving Results
 # ============================================================================
 
@@ -307,7 +417,7 @@ with runner_image.imports():
 )
 class TranscriptionRunner():
     num_requests: int = modal.parameter()
-    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", or "voxtral"
+    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", "voxtral", or "phi4_multimodal"
 
     @modal.method()
     def run_transcription(self, cfg):
@@ -334,6 +444,13 @@ class TranscriptionRunner():
             )
         elif self.model_type == "voxtral":
             transcription_cls = VoxtralAsrBatchTranscription.with_options(
+                gpu=cfg.gpu_type,
+            )(
+                model_id=cfg.model_id,
+                gpu_batch_size=cfg.gpu_batch_size,
+            )
+        elif self.model_type == "phi4_multimodal":
+            transcription_cls = Phi4MultimodalAsrBatchTranscription.with_options(
                 gpu=cfg.gpu_type,
             )(
                 model_id=cfg.model_id,

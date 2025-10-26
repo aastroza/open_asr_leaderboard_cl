@@ -12,6 +12,7 @@ from app.transcription import (
     NeMoAsrBatchTranscription,
     TransformersAsrBatchTranscription,
     VoxtralAsrBatchTranscription,
+    Phi4MultimodalAsrBatchTranscription,
     TranscriptionRunner,
 )
 from utils.data import DATASET_CONFIG, DATASET_STORAGE_NAME
@@ -262,6 +263,76 @@ def batch_transcription_voxtral(*args):
 
 
 @app.local_entrypoint()
+def batch_transcription_phi4_multimodal(*args):
+    """
+    Run batch transcription using Phi-4 multimodal models.
+
+    Usage:
+        modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct
+        modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct --gpu-batch-size 4
+    """
+
+    print("Running Phi-4 Multimodal ASR batch transcription")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default=Phi4MultimodalAsrBatchTranscription.DEFAULT_MODEL_ID,
+        help="Model identifier. Should be a Phi-4 multimodal model.",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        help="Dataset split (e.g., 'test')",
+    )
+    parser.add_argument(
+        "--gpu-type",
+        type=str,
+        default=Phi4MultimodalAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        help="The GPU type to run the pipeline on.",
+    )
+    parser.add_argument(
+        "--gpu-batch-size",
+        type=int,
+        default=Phi4MultimodalAsrBatchTranscription.DEFAULT_BATCH_SIZE,
+        help="Number of samples to go through each streamed batch.",
+    )
+    parser.add_argument(
+        "--num-requests",
+        type=int,
+        default=Phi4MultimodalAsrBatchTranscription.DEFAULT_NUM_REQUESTS,
+        help="Number of calls to make to the run_inference method.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default="results",
+        help="Path to save the combined CSV file",
+    )
+    parser.add_argument(
+        "--job-id",
+        type=str,
+        default=f"Phi4Multimodal_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
+        help="Job ID.",
+    )
+    cfg = parser.parse_args(args=args)
+
+    print("Job Config:")
+    print(cfg)
+
+    runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="phi4_multimodal")
+    runner.run_transcription.remote(cfg)
+
+
+@app.local_entrypoint()
 def batch_transcription(*args):
     """
     Run batch transcription with automatic model type detection.
@@ -331,6 +402,9 @@ def batch_transcription(*args):
     elif "voxtral" in cfg.model_id.lower():
         model_type = "voxtral"
         default_batch_size = 8
+    elif "phi-4" in cfg.model_id.lower() or "phi4" in cfg.model_id.lower():
+        model_type = "phi4_multimodal"
+        default_batch_size = 4
     else:
         model_type = "transformers"
         default_batch_size = 16
