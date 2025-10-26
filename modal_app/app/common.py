@@ -100,6 +100,47 @@ voxtral_transcription_image = (
     .add_local_dir("utils", remote_path="/root/utils")
 )
 
+# Image for Phi-4 multimodal models
+phi4_multimodal_image = (
+    modal.Image.from_registry(
+        "nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04", add_python=_PYTHON_VERSION
+    )
+    .env(
+        {
+            "HF_HUB_ENABLE_HF_TRANSFER": "1",
+            "HF_HOME": MODELS_VOLPATH,
+        }
+    )
+    .apt_install("ffmpeg", "libsndfile1")
+    .pip_install(
+            "wheel",
+            "packaging",  # Required by flash-attn setup.py
+            "torch==2.6.0",
+            "torchvision==0.21.0",
+            "torchaudio",
+        )
+    .pip_install(
+            "flash-attn==2.7.4.post1",  # Install flash-attn after torch and packaging
+        )
+    .pip_install(
+            "transformers==4.48.2",
+            "accelerate==1.3.0",
+            "evaluate",
+            "datasets",
+            "librosa",
+            "jiwer",
+            "soundfile",
+            "pillow",
+            "scipy",
+            "peft==0.13.2",
+            "backoff==2.2.1",
+            "hf_transfer==0.1.9",
+            "huggingface_hub[hf-xet]>=0.34.0",
+        )
+    .entrypoint([])
+    .add_local_dir("utils", remote_path="/root/utils")
+)
+
 data_download_image = (
     modal.Image.debian_slim(python_version=_PYTHON_VERSION)
     .apt_install("ffmpeg", "libsndfile1", "libavcodec-dev", "libavformat-dev", "libavutil-dev")

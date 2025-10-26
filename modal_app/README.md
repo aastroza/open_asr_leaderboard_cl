@@ -172,6 +172,9 @@ modal run run.py::batch_transcription_transformers --model_id openai/whisper-lar
 
 # Mistral Voxtral Mini 3B
 modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-3B-2507
+
+# Phi-4 Multimodal Instruct
+modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct 
 ```
 
 ## Output
