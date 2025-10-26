@@ -59,11 +59,11 @@ transformers_transcription_image = (
             "torch==2.7.1",
             "transformers==4.54.0",  # Updated for Voxtral support (>= 4.54.0 required)
             "mistral-common[audio]>=1.8.1",  # Required for Voxtral audio processing
+            "huggingface_hub[hf-xet]>=0.34.0",  # Updated to match transformers 4.54.0 requirement
             "accelerate==1.3.0",
             "evaluate==0.4.3",
             "librosa==0.11.0",
             "hf_transfer==0.1.9",
-            "huggingface_hub[hf-xet]==0.32.4",
             "datasets[audio]==4.0.0",
             "soundfile==0.13.1",
             "jiwer==4.0.0",
