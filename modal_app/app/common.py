@@ -114,12 +114,13 @@ phi4_multimodal_image = (
     .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
             "wheel",
+            "packaging",  # Required by flash-attn setup.py
             "torch==2.6.0",
             "torchvision==0.21.0",
             "torchaudio",
         )
     .pip_install(
-            "flash-attn==2.7.4.post1",  # Install flash-attn after torch
+            "flash-attn==2.7.4.post1",  # Install flash-attn after torch and packaging
         )
     .pip_install(
             "transformers==4.48.2",
