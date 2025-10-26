@@ -83,7 +83,7 @@ class NeMoAsrBatchTranscription():
             if 'canary' in self.model_id:
                 # Canary v2 uses pnc, v1 uses nopnc
                 pnc = 'pnc' if 'v2' in self.model_id else 'nopnc'
-                transcriptions = self.asr_model.transcribe(local_filepaths, batch_size=self.gpu_batch_size, verbose=False, pnc=pnc, num_workers=1)
+                transcriptions = self.asr_model.transcribe(local_filepaths, batch_size=self.gpu_batch_size, verbose=False, pnc=pnc, num_workers=1, source_lang='es', target_lang='es')
             else:
                 transcriptions = self.asr_model.transcribe(local_filepaths, batch_size=self.gpu_batch_size, num_workers=1)
 
@@ -260,6 +260,7 @@ class TranscriptionRunner():
         for result, df in zip(results, dfs):
             result['total_runtime'] = total_runtime
             result['job_id'] = cfg.job_id
+            result['model_id'] = cfg.model_id
             result['audio_length_s'] = df['audio_length_s'].tolist()
             result['original_text'] = df['text'].tolist()
             # Use the actual dataset values from the DataFrame instead of cfg.dataset
@@ -310,6 +311,7 @@ class TranscriptionRunner():
                     'split': result['split'][i],
                     'total_runtime': result['total_runtime'],
                     'job_id': result['job_id'],
+                    'model_id': result['model_id'],
                     'batch_wer': result['wer'],  # Keep batch-level metrics for reference
                     'batch_rtfx': result['rtfx'],
                     'batch_total_time': result['total_time']
@@ -327,6 +329,7 @@ class TranscriptionRunner():
                 'total_time': result['total_time'],
                 'total_runtime': result['total_runtime'],
                 'job_id': result['job_id'],
+                'model_id': result['model_id'],
                 'wer': result['wer'],
                 'rtfx': result['rtfx'],
                 'total_audio_length': sum(result['audio_length_s'])
@@ -372,6 +375,7 @@ class TranscriptionRunner():
                     'total_time': total_time,
                     'total_runtime': group['total_runtime'].iloc[0],
                     'job_id': group['job_id'].iloc[0],
+                    'model_id': group['model_id'].iloc[0],
                     'wer': dataset_wer,
                     'rtfx': round(rtfx, 2),
                     'total_audio_length': total_audio_length
