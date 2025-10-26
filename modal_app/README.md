@@ -171,7 +171,7 @@ modal run run.py::batch_transcription_transformers --model_id openai/whisper-lar
 modal run run.py::batch_transcription_transformers --model_id openai/whisper-large-v3-turbo
 
 # Mistral Voxtral Mini 3B
-modal run run.py::batch_transcription_transformers --model_id mistralai/Voxtral-Mini-3B-2507
+modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-3B-2507
 ```
 
 ## Output
