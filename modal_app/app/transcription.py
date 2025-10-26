@@ -108,7 +108,7 @@ class NeMoAsrBatchTranscription():
 
 with transformers_transcription_image.imports():
     import torch
-    from transformers import pipeline, AutoModelForSpeechSeq2Seq, AutoProcessor
+    from transformers import pipeline, AutoModelForSpeechSeq2Seq, AutoProcessor, VoxtralForConditionalGeneration
     import evaluate
     import utils.normalizer.data_utils as du
     from pathlib import Path
@@ -140,29 +140,42 @@ class TransformersAsrBatchTranscription():
     def setup(self):
 
         self._COMPUTE_DTYPE = torch.bfloat16
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        # Load model
-        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            self.model_id,
-            torch_dtype=self._COMPUTE_DTYPE,
-            low_cpu_mem_usage=True,
-            use_safetensors=True
-        )
-        self.model.to(device)
+        # Check if this is a Voxtral model
+        self.is_voxtral = "voxtral" in self.model_id.lower()
 
-        # Load processor
-        self.processor = AutoProcessor.from_pretrained(self.model_id)
+        if self.is_voxtral:
+            # Voxtral uses VoxtralForConditionalGeneration
+            self.processor = AutoProcessor.from_pretrained(self.model_id)
+            self.model = VoxtralForConditionalGeneration.from_pretrained(
+                self.model_id,
+                torch_dtype=self._COMPUTE_DTYPE,
+                device_map=self.device
+            )
+            self.pipe = None  # Not used for Voxtral
+        else:
+            # Standard Whisper/ASR models
+            self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                self.model_id,
+                torch_dtype=self._COMPUTE_DTYPE,
+                low_cpu_mem_usage=True,
+                use_safetensors=True
+            )
+            self.model.to(self.device)
 
-        # Create pipeline
-        self.pipe = pipeline(
-            "automatic-speech-recognition",
-            model=self.model,
-            tokenizer=self.processor.tokenizer,
-            feature_extractor=self.processor.feature_extractor,
-            torch_dtype=self._COMPUTE_DTYPE,
-            device=device,
-        )
+            # Load processor
+            self.processor = AutoProcessor.from_pretrained(self.model_id)
+
+            # Create pipeline
+            self.pipe = pipeline(
+                "automatic-speech-recognition",
+                model=self.model,
+                tokenizer=self.processor.tokenizer,
+                feature_extractor=self.processor.feature_extractor,
+                torch_dtype=self._COMPUTE_DTYPE,
+                device=self.device,
+            )
 
     @modal.method()
     async def run_inference(self, audio_filepaths):
@@ -172,20 +185,44 @@ class TransformersAsrBatchTranscription():
 
         copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
 
-        # Load audio files
-        audio_data = []
-        for filepath in local_filepaths:
-            audio_array, sample_rate = sf.read(filepath)
-            audio_data.append({"array": audio_array, "sampling_rate": sample_rate})
-
         start_time = time.perf_counter()
 
-        # Process in batches
-        transcriptions = []
-        for i in range(0, len(audio_data), self.gpu_batch_size):
-            batch = audio_data[i:i + self.gpu_batch_size]
-            results = self.pipe(batch, batch_size=self.gpu_batch_size, generate_kwargs={"language": "spanish"})
-            transcriptions.extend([r["text"] for r in results])
+        if self.is_voxtral:
+            # Voxtral-specific transcription using apply_transcription_request
+            transcriptions = []
+            for filepath in local_filepaths:
+                # Process each audio file individually for Voxtral
+                inputs = self.processor.apply_transcription_request(
+                    language="es",  # Spanish target language
+                    audio=filepath,
+                    model_id=self.model_id
+                )
+                inputs = inputs.to(self.device, dtype=self._COMPUTE_DTYPE)
+
+                # Generate transcription
+                with torch.inference_mode():
+                    outputs = self.model.generate(**inputs, max_new_tokens=500)
+
+                # Decode output
+                decoded = self.processor.batch_decode(
+                    outputs[:, inputs.input_ids.shape[1]:],
+                    skip_special_tokens=True
+                )
+                transcriptions.extend(decoded)
+        else:
+            # Standard Whisper/ASR pipeline approach
+            # Load audio files
+            audio_data = []
+            for filepath in local_filepaths:
+                audio_array, sample_rate = sf.read(filepath)
+                audio_data.append({"array": audio_array, "sampling_rate": sample_rate})
+
+            # Process in batches
+            transcriptions = []
+            for i in range(0, len(audio_data), self.gpu_batch_size):
+                batch = audio_data[i:i + self.gpu_batch_size]
+                results = self.pipe(batch, batch_size=self.gpu_batch_size, generate_kwargs={"language": "spanish"})
+                transcriptions.extend([r["text"] for r in results])
 
         total_time = time.perf_counter() - start_time
         print("Total time:", total_time)

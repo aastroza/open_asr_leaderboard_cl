@@ -57,7 +57,8 @@ transformers_transcription_image = (
     .apt_install("ffmpeg", "libsndfile1")
     .pip_install(
             "torch==2.7.1",
-            "transformers==4.48.1",
+            "transformers==4.54.0",  # Updated for Voxtral support (>= 4.54.0 required)
+            "mistral-common[audio]>=1.8.1",  # Required for Voxtral audio processing
             "accelerate==1.3.0",
             "evaluate==0.4.3",
             "librosa==0.11.0",
