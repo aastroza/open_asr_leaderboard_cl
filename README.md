@@ -80,6 +80,8 @@ Following the Open ASR Leaderboard standard, we report:
 
 This project uses [Modal](https://modal.com) for cloud-based distributed GPU evaluation. All evaluation code is in the `modal_app/` directory.
 
+The implementation is adapted from the [Modal Labs Open Batch Transcription](https://modal.com/blog/fast-cheap-batch-transcription) example, customized for Chilean Spanish ASR evaluation.
+
 ### Prerequisites
 
 1. Python 3.8+
@@ -117,7 +119,7 @@ modal run run.py::batch_transcription --model_id nvidia/parakeet-tdt-0.6b-v3
 modal volume ls chilean-asr-results results/
 ```
 
-### 📖 Full Documentation
+### Full Documentation
 
 For detailed setup instructions, configuration options, supported models, and troubleshooting, see:
 
