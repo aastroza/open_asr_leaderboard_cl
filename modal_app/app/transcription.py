@@ -563,33 +563,52 @@ class TranscriptionRunner():
             print("Creating dataset summary...")
             print(f"Unique datasets: {results_df['dataset'].unique()}")
             
-            # Group by dataset and recalculate metrics properly
-            dataset_groups = results_df.groupby('dataset')
-            
+            # Calculate dataset-level metrics directly from results (like batch summary)
             dataset_summary_data = []
             wer_metric = evaluate.load("wer")
             
-            for dataset_name, group in dataset_groups:
-                # Recalculate WER for this dataset
-                normalized_predictions = [du.normalizer(pred) for pred in group['transcriptions']]
-                normalized_references = [du.normalizer(ref) for ref in group['original_text']]
+            # Group samples by dataset across all batches
+            dataset_groups = {}
+            for result in results:
+                # Group samples from this batch by dataset
+                for i in range(len(result['transcriptions'])):
+                    dataset_name = result['dataset'][i]
+                    if dataset_name not in dataset_groups:
+                        dataset_groups[dataset_name] = {
+                            'transcriptions': [],
+                            'original_text': [],
+                            'audio_length_s': [],
+                            'total_time': 0
+                        }
+                    
+                    dataset_groups[dataset_name]['transcriptions'].append(result['transcriptions'][i])
+                    dataset_groups[dataset_name]['original_text'].append(result['original_text'][i])
+                    dataset_groups[dataset_name]['audio_length_s'].append(result['audio_length_s'][i])
+                    
+                    # Add proportional time for this sample
+                    proportional_time = result['total_time'] / len(result['transcriptions'])
+                    dataset_groups[dataset_name]['total_time'] += proportional_time
+            
+            # Calculate metrics for each dataset
+            for dataset_name, dataset_data in dataset_groups.items():
+                # Calculate WER for this dataset
+                normalized_predictions = [du.normalizer(pred) for pred in dataset_data['transcriptions']]
+                normalized_references = [du.normalizer(ref) for ref in dataset_data['original_text']]
                 dataset_wer = wer_metric.compute(references=normalized_references, predictions=normalized_predictions)
                 dataset_wer = round(100 * dataset_wer, 2)
                 
-                # Calculate total audio length and time
-                total_audio_length = group['audio_length_s'].sum()
-                total_time = group['batch_total_time'].sum()  # Sum all batch times
-                
-                # Calculate RTFx
+                # Calculate total audio length and RTFx
+                total_audio_length = sum(dataset_data['audio_length_s'])
+                total_time = dataset_data['total_time']
                 rtfx = total_audio_length / total_time if total_time > 0 else 0
                 
                 dataset_summary_data.append({
                     'dataset': dataset_name,
-                    'num_samples': len(group),
+                    'num_samples': len(dataset_data['transcriptions']),
                     'total_time': total_time,
-                    'total_runtime': group['total_runtime'].iloc[0],
-                    'job_id': group['job_id'].iloc[0],
-                    'model_id': group['model_id'].iloc[0],
+                    'total_runtime': results[0]['total_runtime'],  # Same for all
+                    'job_id': results[0]['job_id'],  # Same for all
+                    'model_id': results[0]['model_id'],  # Same for all
                     'wer': dataset_wer,
                     'rtfx': round(rtfx, 2),
                     'total_audio_length': total_audio_length
