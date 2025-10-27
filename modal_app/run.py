@@ -13,6 +13,7 @@ from app.transcription import (
     TransformersAsrBatchTranscription,
     VoxtralAsrBatchTranscription,
     Phi4MultimodalAsrBatchTranscription,
+    ElevenLabsAsrBatchTranscription,
     TranscriptionRunner,
 )
 from utils.data import DATASET_CONFIG, DATASET_STORAGE_NAME
@@ -333,6 +334,77 @@ def batch_transcription_phi4_multimodal(*args):
 
 
 @app.local_entrypoint()
+def batch_transcription_elevenlabs(*args):
+    """
+    Run batch transcription using ElevenLabs API.
+
+    Usage:
+        modal run run.py::batch_transcription_elevenlabs --model_id scribe_v1
+        modal run run.py::batch_transcription_elevenlabs --model_id scribe_v1 --batch-size 5
+
+    Note: Requires ELEVENLABS_API_KEY to be set in Modal secrets.
+    Create the secret with: modal secret create elevenlabs-api-key ELEVENLABS_API_KEY=your_key_here
+    """
+
+    print("Running ElevenLabs API batch transcription")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default=ElevenLabsAsrBatchTranscription.DEFAULT_MODEL_ID,
+        help="ElevenLabs model ID (e.g., 'scribe_v1')",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        help="Dataset split (e.g., 'test')",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=ElevenLabsAsrBatchTranscription.DEFAULT_BATCH_SIZE,
+        help="Number of concurrent API requests per batch.",
+    )
+    parser.add_argument(
+        "--num-requests",
+        type=int,
+        default=ElevenLabsAsrBatchTranscription.DEFAULT_NUM_REQUESTS,
+        help="Number of calls to make to the run_inference method.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default="results",
+        help="Path to save the combined CSV file",
+    )
+    parser.add_argument(
+        "--job-id",
+        type=str,
+        default=f"ElevenLabs_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
+        help="Job ID.",
+    )
+    cfg = parser.parse_args(args=args)
+
+    # ElevenLabs doesn't use GPU, so set a dummy value
+    cfg.gpu_type = "none"
+    cfg.gpu_batch_size = cfg.batch_size
+
+    print("Job Config:")
+    print(cfg)
+
+    runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="elevenlabs")
+    runner.run_transcription.remote(cfg)
+
+
+@app.local_entrypoint()
 def batch_transcription(*args):
     """
     Run batch transcription with automatic model type detection.
@@ -405,12 +477,19 @@ def batch_transcription(*args):
     elif "phi-4" in cfg.model_id.lower() or "phi4" in cfg.model_id.lower():
         model_type = "phi4_multimodal"
         default_batch_size = 4
+    elif "elevenlabs" in cfg.model_id.lower() or "scribe" in cfg.model_id.lower():
+        model_type = "elevenlabs"
+        default_batch_size = 10
     else:
         model_type = "transformers"
         default_batch_size = 16
 
     if cfg.gpu_batch_size is None:
         cfg.gpu_batch_size = default_batch_size
+
+    # ElevenLabs doesn't need GPU
+    if model_type == "elevenlabs":
+        cfg.gpu_type = "none"
 
     if cfg.job_id is None:
         model_name = cfg.model_id.replace("/", "-")

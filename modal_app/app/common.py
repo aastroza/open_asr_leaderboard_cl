@@ -168,3 +168,17 @@ runner_image = (
         )
     .add_local_dir("utils", remote_path="/root/utils")
 )
+
+# Image for ElevenLabs API (no GPU needed)
+elevenlabs_transcription_image = (
+    modal.Image.debian_slim(python_version=_PYTHON_VERSION)
+    .apt_install("libsndfile1", "ffmpeg")
+    .pip_install(
+            "elevenlabs==1.18.2",
+            "requests==2.32.3",
+            "soundfile==0.13.1",
+            "evaluate==0.4.3",
+            "jiwer==4.0.0",
+        )
+    .add_local_dir("utils", remote_path="/root/utils")
+)
