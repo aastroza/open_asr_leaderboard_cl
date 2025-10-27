@@ -163,4 +163,4 @@ If you use this evaluation framework or results, please cite both the Chilean Sp
 
 - **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework
 - All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models
-- **[Modal](https://modal.com/)** for providing the cloud compute platform
+- **Special thanks to [Modal](https://modal.com/) for providing compute credits that made this evaluation possible!**
