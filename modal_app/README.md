@@ -76,6 +76,14 @@ Or add to `.env` file in the `modal_app` directory:
 HF_TOKEN=hf_your_token_here
 ```
 
+### 5. Setup ElevenLabs API (Optional)
+
+For using ElevenLabs speech-to-text models, create a Modal secret with your API key:
+
+```bash
+modal secret create elevenlabs-api-key ELEVENLABS_API_KEY=sk_your_elevenlabs_api_key_here
+```
+
 ## Usage
 
 ### Step 1: Stage the Chilean Spanish Dataset (One-time setup)
@@ -176,11 +184,15 @@ modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-
 # Phi-4 Multimodal Instruct
 modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct 
 ```
-### Elevenlabs
+### ElevenLabs
+
+**Note:** Requires ElevenLabs API key setup (see Setup section step 5).
 
 ```bash
 modal run run.py::batch_transcription_elevenlabs --model_id elevenlabs/scribe_v1
 ```
+
+Available models: `elevenlabs/scribe_v1`, `elevenlabs/scribe_v1_experimental`
 
 ## Results
 
