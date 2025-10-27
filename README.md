@@ -2,6 +2,8 @@
 
 > **Cloud-based evaluation framework for Automatic Speech Recognition (ASR) models on Chilean Spanish, powered by [Modal](https://modal.com).**
 
+This repository contains the code for the Open ASR Leaderboard. The leaderboard is a Gradio Space that allows users to compare the accuracy of ASR models on a variety of datasets. The leaderboard is hosted at [idsudd/open_asr_leaderboard_cl](https://huggingface.co/spaces/idsudd/open_asr_leaderboard_cl).
+
 ## About This Repository
 
 This repository is a **streamlined, task-specific version** of the [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard) evaluation framework, specifically adapted for benchmarking ASR models on the **Chilean Spanish dialect**.
