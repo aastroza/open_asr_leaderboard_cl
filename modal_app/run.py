@@ -86,7 +86,7 @@ def batch_transcription_nemo(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default=NeMoAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        default="A100-80GB",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
@@ -156,7 +156,7 @@ def batch_transcription_transformers(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default=TransformersAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        default="A100-80GB",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
@@ -226,7 +226,7 @@ def batch_transcription_voxtral(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default=VoxtralAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        default="A100-80GB",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
@@ -296,7 +296,7 @@ def batch_transcription_phi4_multimodal(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default=Phi4MultimodalAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        default="A100-80GB",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
@@ -366,7 +366,7 @@ def batch_transcription(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default="L40S",
+        default="A100-80GB",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
