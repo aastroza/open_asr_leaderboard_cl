@@ -189,6 +189,9 @@ modal run run.py::batch_transcription_transformers --model_id openai/whisper-sma
 
 # Whisper Small es-cl
 modal run run.py::batch_transcription_transformers --model_id rcastrovexler/whisper-small-es-cl
+
+# Whisper Large Turbo Latam
+modal run run.py::batch_transcription_transformers --model_id surus-lat/whisper-large-v3-turbo-latam
 ```
 
 ### ElevenLabs

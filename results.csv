@@ -26,3 +26,6 @@ common_voice,152,4.290577019156153,44.071024773999994,Transformers_2025-10-27_00
 google_chilean_spanish,4374,113.85375795331139,36.504430927,Transformers_2025-10-27_01-00-59,rcastrovexler/whisper-small-es-cl,2.37,226.06,25737.9899375
 datarisas,50,1.3030618462718029,36.504430927,Transformers_2025-10-27_01-00-59,rcastrovexler/whisper-small-es-cl,30.13,286.76,373.662875
 common_voice,152,3.9525142864162195,36.504430927,Transformers_2025-10-27_01-00-59,rcastrovexler/whisper-small-es-cl,13.4,224.42,887.004
+google_chilean_spanish,4374,177.93435856938717,59.272752274,Transformers_2025-10-27_16-19-28,surus-lat/whisper-large-v3-turbo-latam,4.64,144.65,25737.9899375
+common_voice,152,6.106875077747236,59.272752274,Transformers_2025-10-27_16-19-28,surus-lat/whisper-large-v3-turbo-latam,2.86,145.25,887.004
+datarisas,50,2.0549551418640357,59.272752274,Transformers_2025-10-27_16-19-28,surus-lat/whisper-large-v3-turbo-latam,20.93,181.84,373.662875
