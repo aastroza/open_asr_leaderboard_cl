@@ -49,7 +49,23 @@ This repository evaluates **9 state-of-the-art ASR models** selected for their m
 - **Dataset**: [`astroza/es-cl-asr-test-only`](https://huggingface.co/datasets/astroza/es-cl-asr-test-only)
 - **Language**: Spanish (Chilean variant)
 - **Split**: `test`
-- **Domain**: Chilean Spanish speech samples
+- **Domain**: Mixed (formal recordings, volunteer speech, comedy performances)
+- **Total Coverage**: Multiple speaking styles and contexts of Chilean Spanish
+
+This dataset aggregates three distinct Chilean Spanish speech datasets to provide comprehensive coverage of different domains and speaking styles:
+
+1. **Common Voice (Chilean Spanish filtered)**: Community-contributed recordings specifically filtered for Chilean Spanish dialects.
+
+2. **Google Chilean Spanish** ([`ylacombe/google-chilean-spanish`](https://huggingface.co/datasets/ylacombe/google-chilean-spanish)): 
+   - 7 hours of transcribed high-quality audio of Chilean Spanish sentences.
+   - Recorded by 31 volunteers.
+   - Intended for speech technologies.
+   - Restructured from original OpenSLR archives for easier streaming
+
+3. **Datarisas** ([`astroza/chilean-jokes-festival-de-vina`](https://huggingface.co/datasets/astroza/chilean-jokes-festival-de-vina)):
+   - Audio fragments from comedy routines at the Festival de Viña del Mar.
+   - Represents spontaneous, colloquial Chilean Spanish.
+   - Captures humor and cultural expressions specific to Chile.
 
 ## Metrics
 
