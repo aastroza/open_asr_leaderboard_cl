@@ -45,10 +45,11 @@ with nemo_transcription_image.imports():
         RESULTS_VOLPATH: results_volume,
     },
     scaledown_window=5,
+    gpu="A100-80GB",
 )
 class NeMoAsrBatchTranscription():
     DEFAULT_MODEL_ID = "nvidia/parakeet-tdt-0.6b-v3"
-    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_GPU_TYPE = "A100-80GB"
     DEFAULT_BATCH_SIZE = 32
     DEFAULT_NUM_REQUESTS = 10
     model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
@@ -128,10 +129,11 @@ with transformers_transcription_image.imports():
         RESULTS_VOLPATH: results_volume,
     },
     scaledown_window=5,
+    gpu="A100-80GB",
 )
 class TransformersAsrBatchTranscription():
     DEFAULT_MODEL_ID = "openai/whisper-large-v3"
-    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_GPU_TYPE = "A100-80GB"
     DEFAULT_BATCH_SIZE = 16
     DEFAULT_NUM_REQUESTS = 10
     model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
@@ -222,10 +224,11 @@ with voxtral_transcription_image.imports():
         RESULTS_VOLPATH: results_volume,
     },
     scaledown_window=5,
+    gpu="A100-80GB",
 )
 class VoxtralAsrBatchTranscription():
     DEFAULT_MODEL_ID = "mistralai/Voxtral-Mini-3B-2507"
-    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_GPU_TYPE = "A100-80GB"
     DEFAULT_BATCH_SIZE = 8
     DEFAULT_NUM_REQUESTS = 10
     model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
@@ -312,10 +315,11 @@ with phi4_multimodal_image.imports():
         RESULTS_VOLPATH: results_volume,
     },
     scaledown_window=5,
+    gpu="A100-80GB",
 )
 class Phi4MultimodalAsrBatchTranscription():
     DEFAULT_MODEL_ID = "microsoft/Phi-4-multimodal-instruct"
-    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_GPU_TYPE = "A100-80GB"
     DEFAULT_BATCH_SIZE = 4
     DEFAULT_NUM_REQUESTS = 10
     model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
