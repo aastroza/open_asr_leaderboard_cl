@@ -176,8 +176,13 @@ modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-
 # Phi-4 Multimodal Instruct
 modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct 
 ```
+### Elevenlabs
 
-## Output
+```bash
+modal run run.py::batch_transcription_elevenlabs --model_id elevenlabs/scribe_v1
+```
+
+## Results
 
 Results are saved to the Modal Volume `chilean-asr-results` in two formats:
 

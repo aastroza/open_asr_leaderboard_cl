@@ -174,7 +174,7 @@ elevenlabs_transcription_image = (
     modal.Image.debian_slim(python_version=_PYTHON_VERSION)
     .apt_install("libsndfile1", "ffmpeg")
     .pip_install(
-            "elevenlabs==1.18.2",
+            "elevenlabs==2.20.1",
             "requests==2.32.3",
             "soundfile==0.13.1",
             "evaluate==0.4.3",

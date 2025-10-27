@@ -436,6 +436,13 @@ class ElevenLabsAsrBatchTranscription():
         if not api_key:
             raise ValueError("ELEVENLABS_API_KEY not found in environment")
         self.client = ElevenLabs(api_key=api_key)
+        
+        # Extract actual model name from HF-style format if needed
+        # Convert "elevenlabs/scribe_v1" -> "scribe_v1"
+        if "/" in self.model_id:
+            self.actual_model_id = self.model_id.split("/")[-1]
+        else:
+            self.actual_model_id = self.model_id
 
     @modal.method()
     async def run_inference(self, audio_filepaths):
@@ -468,7 +475,7 @@ class ElevenLabsAsrBatchTranscription():
                     with open(filepath, "rb") as audio_file:
                         transcription = self.client.speech_to_text.convert(
                             file=audio_file,
-                            model_id=self.model_id,
+                            model_id=self.actual_model_id,
                             language_code="es",  # Spanish language code
                         )
                     transcriptions.append(transcription.text)
@@ -554,7 +561,7 @@ class TranscriptionRunner():
             )
         elif self.model_type == "elevenlabs":
             # ElevenLabs doesn't need GPU, uses API calls
-            transcription_cls = ElevenLabsAsrBatchTranscription()(
+            transcription_cls = ElevenLabsAsrBatchTranscription(
                 model_id=cfg.model_id,
                 batch_size=cfg.gpu_batch_size,  # For API, this is batch size not GPU batch
             )
