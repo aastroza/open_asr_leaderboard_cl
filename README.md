@@ -17,12 +17,10 @@ This Chilean Spanish adaptation makes the following key modifications to focus e
 | Aspect | Original Open ASR Leaderboard | This Repository |
 |--------|-------------------------------|-----------------|
 | **Target Language** | English (primarily) | Chilean Spanish |
-| **Dataset** | 7 English datasets (LibriSpeech, AMI, etc.) | Single dataset: [`astroza/es-cl-asr-test-only`](https://huggingface.co/datasets/astroza/es-cl-asr-test-only) |
+| **Dataset** | 7 English datasets (LibriSpeech, AMI, etc.) | 3 Chilean Spanish datasets (Common Voice, Google Chilean Spanish, Datarisas) |
 | **Text Normalization** | English text normalizer | **Multilingual normalizer** preserving Spanish accents (á, é, í, ó, ú, ñ) |
 | **Model Focus** | Broad coverage (~50+ models) | **7 selected models** optimized for multilingual/Spanish ASR |
-| **Frameworks** | 10+ frameworks (Transformers, NeMo, SpeechBrain, CTranslate2, etc.) | **4 frameworks**: Transformers, NeMo, Phi, API |
 | **Execution** | Local GPU execution | **Cloud-based** parallel execution via Modal |
-| **Speed** | Single GPU, sequential | **10-50x faster** with parallel GPUs |
 
 ---
 
@@ -103,17 +101,6 @@ For detailed setup instructions, configuration options, supported models, and tr
 
 **[`modal_app/README.md`](modal_app/README.md)**
 
----
-
-## Why Modal?
-
-Running ASR evaluations on Modal provides significant advantages:
-
-- ✅ **10-50x faster**: Parallel processing across multiple GPUs
-- ✅ **No local GPU required**: Run from any machine with internet
-- ✅ **Pay per second**: Only pay for compute used (~$0.03-0.10 per 1000 samples)
-- ✅ **Easy setup**: No CUDA installation or driver management
-- ✅ **Scalable**: Automatically scales to dataset size
 
 ---
 
@@ -185,22 +172,6 @@ If you use this evaluation framework or results, please cite both the Chilean Sp
   howpublished={\url{https://huggingface.co/spaces/hf-audio/open_asr_leaderboard}}
 }
 ```
-
----
-
-## Contributing
-
-This repository is a specialized fork focused on Chilean Spanish ASR evaluation. For contributions:
-
-1. **Bug fixes & improvements**: Open an issue or pull request
-2. **Adding new models**: Ensure they support Spanish and follow the existing evaluation structure
-3. **General ASR leaderboard features**: Contribute to the upstream [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard)
-
----
-
-## License
-
-This repository maintains the same license as the original [Open ASR Leaderboard](https://github.com/huggingface/open_asr_leaderboard). See [LICENSE](LICENSE) for details.
 
 ---
 
