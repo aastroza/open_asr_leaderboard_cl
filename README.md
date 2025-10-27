@@ -26,17 +26,21 @@ This Chilean Spanish adaptation makes the following key modifications to focus e
 
 ## Models Evaluated
 
-This repository evaluates **7 state-of-the-art ASR models** selected for their multilingual or Spanish language support:
+This repository evaluates **9 state-of-the-art ASR models** selected for their multilingual or Spanish language support:
 
 | Model | Type | Framework | Parameters | Notes |
 |-------|------|-----------|------------|-------|
 | **openai/whisper-large-v3** | Multilingual | Transformers | 1.5B | OpenAI's flagship ASR model |
 | **openai/whisper-large-v3-turbo** | Multilingual | Transformers | 809M | Faster Whisper variant |
+| **openai/whisper-small** | Multilingual | Transformers | 244M | Reference baseline model |
+| **rcastrovexler/whisper-small-es-cl** | Chilean Spanish | Transformers | 244M | Only fine-tuned model found for Chilean Spanish |
 | **nvidia/canary-1b-v2** | Multilingual | NeMo | 1B | NVIDIA's multilingual ASR |
 | **nvidia/parakeet-tdt-0.6b-v3** | Multilingual | NeMo | 0.6B | Lightweight, fast inference |
 | **microsoft/Phi-4-multimodal-instruct** | Multimodal | Phi | 14B | Microsoft's multimodal LLM with audio |
 | **mistralai/Voxtral-Mini-3B-2507** | Speech-to-text | Transformers | 3B | Mistral's ASR model |
 | **elevenlabs/scribe_v1** | API-based | API | N/A | ElevenLabs' commercial ASR API |
+
+**Note:** `rcastrovexler/whisper-small-es-cl` is the only fine-tuned model we found specifically for Chilean Spanish transcription. It's included alongside `openai/whisper-small` as a reference baseline, since the Chilean model is a fine-tuning of the original Whisper Small.
 
 ## Dataset
 

@@ -183,7 +183,14 @@ modal run run.py::batch_transcription_voxtral --model_id mistralai/Voxtral-Mini-
 
 # Phi-4 Multimodal Instruct
 modal run run.py::batch_transcription_phi4_multimodal --model_id microsoft/Phi-4-multimodal-instruct 
+
+# Whisper Small
+modal run run.py::batch_transcription_transformers --model_id openai/whisper-small
+
+# Whisper Small es-cl
+modal run run.py::batch_transcription_transformers --model_id rcastrovexler/whisper-small-es-cl
 ```
+
 ### ElevenLabs
 
 **Note:** Requires ElevenLabs API key setup (see Setup section step 5).
