@@ -105,28 +105,6 @@ For detailed setup instructions, configuration options, supported models, and tr
 
 **[`modal_app/README.md`](modal_app/README.md)**
 
-
----
-
-## Repository Structure
-
-```
-open_asr_leaderboard_cl/
-├── README.md                      # This file
-├── modal_app/                     # Modal-based evaluation (all code here)
-│   ├── README.md                  # Detailed documentation
-│   ├── pyproject.toml             # Dependencies
-│   ├── run.py                     # Main entrypoints
-│   ├── app/                       # Modal functions
-│   │   ├── common.py              # Volumes, images, app config
-│   │   ├── stage_data.py          # Dataset staging
-│   │   └── transcription.py       # Transcription workers
-│   └── utils/                     # Utilities
-│       ├── data.py                # Data loading
-│       └── normalizer/            # Text normalization
-└── LICENSE
-```
-
 ---
 
 ## Text Normalization for Spanish
@@ -184,14 +162,3 @@ If you use this evaluation framework or results, please cite both the Chilean Sp
 - **Hugging Face, NVIDIA NeMo, and the Open ASR Leaderboard contributors** for the original evaluation framework
 - All model developers (OpenAI, NVIDIA, Microsoft, Mistral AI, ElevenLabs) for their ASR models
 - **[Modal](https://modal.com/)** for providing the cloud compute platform
-
----
-
-## Support
-
-For issues specific to:
-- **This Chilean Spanish adaptation**: Open an issue in this repository
-- **Modal setup or execution**: See [modal_app/README.md](modal_app/README.md) or visit [Modal Docs](https://modal.com/docs)
-- **Original Open ASR Leaderboard framework**: Visit [huggingface/open_asr_leaderboard](https://github.com/huggingface/open_asr_leaderboard)
-- **Dataset issues**: Contact the [dataset author](https://huggingface.co/datasets/astroza/es-cl-asr-test-only)
-- **Model-specific problems**: Check the respective model cards on Hugging Face
