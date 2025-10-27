@@ -366,7 +366,7 @@ def batch_transcription(*args):
     parser.add_argument(
         "--gpu-type",
         type=str,
-        default="A100-80GB",
+        default="L40S",
         help="The GPU type to run the pipeline on.",
     )
     parser.add_argument(
