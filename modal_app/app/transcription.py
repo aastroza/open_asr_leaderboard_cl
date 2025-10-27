@@ -10,6 +10,7 @@ from app.common import (
     transformers_transcription_image,
     voxtral_transcription_image,
     phi4_multimodal_image,
+    elevenlabs_transcription_image,
     runner_image,
     dataset_volume,
     model_volume,
@@ -402,6 +403,101 @@ class Phi4MultimodalAsrBatchTranscription():
 
 
 # ============================================================================
+# ElevenLabs API
+# ============================================================================
+
+with elevenlabs_transcription_image.imports():
+    from elevenlabs.client import ElevenLabs
+    import soundfile as sf
+    import os
+    from pathlib import Path
+    import time
+    from utils.data import copy_concurrent
+    from io import BytesIO
+
+
+@app.cls(
+    image=elevenlabs_transcription_image,
+    timeout=60*MINUTES,
+    volumes={
+        DATASETS_VOLPATH: dataset_volume,
+        RESULTS_VOLPATH: results_volume,
+    },
+    scaledown_window=5,
+    secrets=[modal.Secret.from_name("elevenlabs-api-key")],
+)
+class ElevenLabsAsrBatchTranscription():
+    DEFAULT_MODEL_ID = "scribe_v1"
+    DEFAULT_BATCH_SIZE = 10  # API calls, not GPU batches
+    DEFAULT_NUM_REQUESTS = 10
+    model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
+    batch_size: int = modal.parameter(default=DEFAULT_BATCH_SIZE)
+
+    @modal.enter()
+    def setup(self):
+        # Initialize ElevenLabs client with API key from secret
+        api_key = os.environ.get("ELEVENLABS_API_KEY")
+        if not api_key:
+            raise ValueError("ELEVENLABS_API_KEY not found in environment")
+        self.client = ElevenLabs(api_key=api_key)
+
+    @modal.method()
+    async def run_inference(self, audio_filepaths):
+        """
+        Transcribe audio files using ElevenLabs API.
+
+        Args:
+            audio_filepaths: List of audio file paths in the dataset volume
+
+        Returns:
+            Dictionary with transcriptions, num_samples, and timing info
+        """
+        local_filepaths = [path.replace(DATASETPATH_MODAL, '/tmp') for path in audio_filepaths]
+        filenames = [filepath.split('/')[-1] for filepath in local_filepaths]
+
+        # Copy audio files from volume to local tmp
+        copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
+
+        transcriptions = []
+        start_time = time.perf_counter()
+
+        # Process each audio file
+        for filepath in local_filepaths:
+            max_retries = 5
+            retry_count = 0
+
+            while retry_count <= max_retries:
+                try:
+                    # Read audio file
+                    with open(filepath, "rb") as audio_file:
+                        transcription = self.client.speech_to_text.convert(
+                            file=audio_file,
+                            model_id=self.model_id,
+                            language_code="es",  # Spanish language code
+                        )
+                    transcriptions.append(transcription.text)
+                    break  # Success, exit retry loop
+
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        print(f"Failed to transcribe {filepath} after {max_retries} retries: {e}")
+                        transcriptions.append("")  # Add empty transcription on failure
+                    else:
+                        print(f"Retry {retry_count}/{max_retries} for {filepath}: {e}")
+                        time.sleep(1 * retry_count)  # Exponential backoff
+
+        total_time = time.perf_counter() - start_time
+        print(f"Total time: {total_time}")
+
+        return {
+            "num_samples": len(filenames),
+            "transcriptions": transcriptions,
+            "total_time": total_time,
+        }
+
+
+# ============================================================================
 # Runner for Scoring and Saving Results
 # ============================================================================
 
@@ -421,7 +517,7 @@ with runner_image.imports():
 )
 class TranscriptionRunner():
     num_requests: int = modal.parameter()
-    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", "voxtral", or "phi4_multimodal"
+    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", "voxtral", "phi4_multimodal", or "elevenlabs"
 
     @modal.method()
     def run_transcription(self, cfg):
@@ -459,6 +555,12 @@ class TranscriptionRunner():
             )(
                 model_id=cfg.model_id,
                 gpu_batch_size=cfg.gpu_batch_size,
+            )
+        elif self.model_type == "elevenlabs":
+            # ElevenLabs doesn't need GPU, uses API calls
+            transcription_cls = ElevenLabsAsrBatchTranscription()(
+                model_id=cfg.model_id,
+                batch_size=cfg.gpu_batch_size,  # For API, this is batch size not GPU batch
             )
         else:  # transformers (Whisper)
             transcription_cls = TransformersAsrBatchTranscription.with_options(
