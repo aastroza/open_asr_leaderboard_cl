@@ -28,7 +28,7 @@ This Chilean Spanish adaptation makes the following key modifications to focus e
 
 ## Models Evaluated
 
-This repository evaluates **9 state-of-the-art ASR models** selected for their multilingual or Spanish language support:
+This repository evaluates **10 state-of-the-art ASR models** selected for their multilingual or Spanish language support:
 
 | Model | Type | Framework | Parameters | Notes |
 |-------|------|-----------|------------|-------|
@@ -41,6 +41,7 @@ This repository evaluates **9 state-of-the-art ASR models** selected for their m
 | **microsoft/Phi-4-multimodal-instruct** | Multimodal | Phi | 14B | Microsoft's multimodal LLM with audio |
 | **mistralai/Voxtral-Mini-3B-2507** | Speech-to-text | Transformers | 3B | Mistral's ASR model |
 | **elevenlabs/scribe_v1** | API-based | API | N/A | ElevenLabs' commercial ASR API |
+| **omniASR_LLM_7B** | Multilingual | fairseq2 | 7B | Meta's OmniLingual ASR model (supports 80+ languages) |
 
 **Note:** `rcastrovexler/whisper-small-es-cl` is the only fine-tuned model we found specifically for Chilean Spanish transcription. It's included alongside `openai/whisper-small` as a reference baseline, since the Chilean model is a fine-tuning of the original Whisper Small.
 
@@ -112,8 +113,12 @@ export HF_TOKEN=your_hf_token_here
 # Stage dataset (one-time setup)
 modal run run.py::stage_data
 
-# Evaluate a model
+# Evaluate a model (auto-detection)
 modal run run.py::batch_transcription --model_id nvidia/parakeet-tdt-0.6b-v3
+modal run run.py::batch_transcription --model_id omniASR_LLM_7B
+
+# Or use specific model type entry points
+modal run run.py::batch_transcription_omnilingual --model_id omniASR_LLM_7B
 
 # View results
 modal volume ls chilean-asr-results results/

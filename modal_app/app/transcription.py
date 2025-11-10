@@ -11,6 +11,7 @@ from app.common import (
     voxtral_transcription_image,
     phi4_multimodal_image,
     elevenlabs_transcription_image,
+    omnilingual_transcription_image,
     runner_image,
     dataset_volume,
     model_volume,
@@ -501,6 +502,78 @@ class ElevenLabsAsrBatchTranscription():
 
 
 # ============================================================================
+# OmniLingual ASR Models
+# ============================================================================
+
+with omnilingual_transcription_image.imports():
+    from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
+    import evaluate
+    import utils.normalizer.data_utils as du
+    from pathlib import Path
+    import time
+    from utils.data import copy_concurrent
+
+
+@app.cls(
+    image=omnilingual_transcription_image,
+    timeout=60*MINUTES,
+    volumes={
+        DATASETS_VOLPATH: dataset_volume,
+        MODELS_VOLPATH: model_volume,
+        RESULTS_VOLPATH: results_volume,
+    },
+    scaledown_window=5,
+)
+class OmnilingualAsrBatchTranscription():
+    DEFAULT_MODEL_ID = "omniASR_LLM_7B"
+    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_BATCH_SIZE = 8
+    DEFAULT_NUM_REQUESTS = 10
+    model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
+    gpu_batch_size: int = modal.parameter(default=DEFAULT_BATCH_SIZE)
+
+    @modal.enter()
+    def setup(self):
+        # Initialize OmniLingual ASR pipeline
+        # Extract model card from model_id (could be "omniASR_LLM_7B" or full path)
+        if "/" in self.model_id:
+            # If it's a full path like "facebook/omniASR_LLM_7B", use the last part
+            model_card = self.model_id.split("/")[-1]
+        else:
+            model_card = self.model_id
+
+        self.pipeline = ASRInferencePipeline(model_card=model_card)
+
+    @modal.method()
+    async def run_inference(self, audio_filepaths):
+        local_filepaths = [path.replace(DATASETPATH_MODAL, '/tmp') for path in audio_filepaths]
+        filenames = [filepath.split('/')[-1] for filepath in local_filepaths]
+
+        copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
+
+        start_time = time.perf_counter()
+
+        # OmniLingual ASR transcription
+        # The language code for Spanish (Latin America) is spa_Latn
+        lang = ["spa_Latn"] * len(local_filepaths)
+
+        transcriptions = self.pipeline.transcribe(
+            local_filepaths,
+            lang=lang,
+            batch_size=self.gpu_batch_size
+        )
+
+        total_time = time.perf_counter() - start_time
+        print("Total time:", total_time)
+
+        return {
+            "num_samples": len(filenames),
+            "transcriptions": transcriptions,
+            "total_time": total_time,
+        }
+
+
+# ============================================================================
 # Runner for Scoring and Saving Results
 # ============================================================================
 
@@ -520,7 +593,7 @@ with runner_image.imports():
 )
 class TranscriptionRunner():
     num_requests: int = modal.parameter()
-    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", "voxtral", "phi4_multimodal", or "elevenlabs"
+    model_type: str = modal.parameter(default="nemo")  # "nemo", "transformers", "voxtral", "phi4_multimodal", "elevenlabs", or "omnilingual"
 
     @modal.method()
     def run_transcription(self, cfg):
@@ -564,6 +637,13 @@ class TranscriptionRunner():
             transcription_cls = ElevenLabsAsrBatchTranscription(
                 model_id=cfg.model_id,
                 batch_size=cfg.gpu_batch_size,  # For API, this is batch size not GPU batch
+            )
+        elif self.model_type == "omnilingual":
+            transcription_cls = OmnilingualAsrBatchTranscription.with_options(
+                gpu=cfg.gpu_type,
+            )(
+                model_id=cfg.model_id,
+                gpu_batch_size=cfg.gpu_batch_size,
             )
         else:  # transformers (Whisper)
             transcription_cls = TransformersAsrBatchTranscription.with_options(

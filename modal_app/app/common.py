@@ -182,3 +182,29 @@ elevenlabs_transcription_image = (
         )
     .add_local_dir("utils", remote_path="/root/utils")
 )
+
+# Image for OmniLingual ASR (fairseq2-based)
+omnilingual_transcription_image = (
+    modal.Image.from_registry(
+        "nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04", add_python=_PYTHON_VERSION
+    )
+    .env(
+        {
+            "HF_HUB_ENABLE_HF_TRANSFER": "1",
+            "HF_HOME": MODELS_VOLPATH,
+        }
+    )
+    .apt_install("ffmpeg", "libsndfile1")
+    .pip_install(
+            "torch==2.7.1",
+            "omnilingual-asr",
+            "evaluate==0.4.3",
+            "librosa==0.11.0",
+            "soundfile==0.13.1",
+            "hf_transfer==0.1.9",
+            "huggingface_hub[hf-xet]==0.32.4",
+            "jiwer==4.0.0",
+        )
+    .entrypoint([])
+    .add_local_dir("utils", remote_path="/root/utils")
+)
