@@ -12,6 +12,7 @@ from app.transcription import (
     NeMoAsrBatchTranscription,
     TransformersAsrBatchTranscription,
     VoxtralAsrBatchTranscription,
+    OmnilingualAsrBatchTranscription,
     Phi4MultimodalAsrBatchTranscription,
     ElevenLabsAsrBatchTranscription,
     TranscriptionRunner,
@@ -190,6 +191,82 @@ def batch_transcription_transformers(*args):
     print(cfg)
 
     runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="transformers")
+    runner.run_transcription.remote(cfg)
+
+
+@app.local_entrypoint()
+def batch_transcription_omnilingual(*args):
+    """
+    Run batch transcription using OmniLingual ASR models.
+
+    Usage:
+        modal run run.py::batch_transcription_omnilingual --model_id omniASR_LLM_7B
+        modal run run.py::batch_transcription_omnilingual --target-lang spa_Latn --gpu-batch-size 2
+    """
+
+    print("Running Omnilingual ASR batch transcription")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default=OmnilingualAsrBatchTranscription.DEFAULT_MODEL_ID,
+        help="Model identifier from the Omnilingual ASR release (e.g., 'omniASR_LLM_7B').",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="es-cl-asr-test-only-full",
+        help="Dataset name (e.g., 'es-cl-asr-test-only-full')",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        help="Dataset split (e.g., 'test')",
+    )
+    parser.add_argument(
+        "--gpu-type",
+        type=str,
+        default=OmnilingualAsrBatchTranscription.DEFAULT_GPU_TYPE,
+        help="The GPU type to run the pipeline on.",
+    )
+    parser.add_argument(
+        "--gpu-batch-size",
+        type=int,
+        default=OmnilingualAsrBatchTranscription.DEFAULT_BATCH_SIZE,
+        help="Number of samples per inference batch.",
+    )
+    parser.add_argument(
+        "--target-lang",
+        type=str,
+        default=OmnilingualAsrBatchTranscription.DEFAULT_TARGET_LANG,
+        help="Target language in BCP-47 format (e.g., 'spa_Latn').",
+    )
+    parser.add_argument(
+        "--num-requests",
+        type=int,
+        default=OmnilingualAsrBatchTranscription.DEFAULT_NUM_REQUESTS,
+        help="Number of calls to make to the run_inference method.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default="results",
+        help="Path to save the combined CSV file",
+    )
+    parser.add_argument(
+        "--job-id",
+        type=str,
+        default=f"Omnilingual_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
+        help="Job ID.",
+    )
+    cfg = parser.parse_args(args=args)
+
+    print("Job Config:")
+    print(cfg)
+
+    runner = TranscriptionRunner(num_requests=cfg.num_requests, model_type="omnilingual")
     runner.run_transcription.remote(cfg)
 
 
@@ -465,6 +542,12 @@ def batch_transcription(*args):
         default=None,
         help="Job ID.",
     )
+    parser.add_argument(
+        "--target-lang",
+        type=str,
+        default=None,
+        help="Target language override for models that require it.",
+    )
     cfg = parser.parse_args(args=args)
 
     # Auto-detect model type
@@ -474,6 +557,11 @@ def batch_transcription(*args):
     elif "voxtral" in cfg.model_id.lower():
         model_type = "voxtral"
         default_batch_size = 8
+    elif "omni" in cfg.model_id.lower():
+        model_type = "omnilingual"
+        default_batch_size = OmnilingualAsrBatchTranscription.DEFAULT_BATCH_SIZE
+        if cfg.target_lang is None:
+            cfg.target_lang = OmnilingualAsrBatchTranscription.DEFAULT_TARGET_LANG
     elif "phi-4" in cfg.model_id.lower() or "phi4" in cfg.model_id.lower():
         model_type = "phi4_multimodal"
         default_batch_size = 4

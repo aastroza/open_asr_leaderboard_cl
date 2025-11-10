@@ -71,6 +71,34 @@ transformers_transcription_image = (
     .add_local_dir("utils", remote_path="/root/utils")
 )
 
+# Image for Omnilingual ASR models
+omnilingual_transcription_image = (
+    modal.Image.from_registry(
+        "nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04", add_python=_PYTHON_VERSION
+    )
+    .env(
+        {
+            "HF_HUB_ENABLE_HF_TRANSFER": "1",
+            "HF_HOME": MODELS_VOLPATH,
+        }
+    )
+    .apt_install("ffmpeg", "libsndfile1")
+    .pip_install(
+            "torch==2.7.1",
+            "evaluate==0.4.3",
+            "librosa==0.11.0",
+            "soundfile==0.13.1",
+            "hf_transfer==0.1.9",
+            "huggingface_hub[hf-xet]==0.32.4",
+            "datasets[audio]==4.0.0",
+            "jiwer==4.0.0",
+            "omnilingual-asr",
+
+        )
+    .entrypoint([])
+    .add_local_dir("utils", remote_path="/root/utils")
+)
+
 # Image for Voxtral models (requires newer transformers and mistral-common)
 voxtral_transcription_image = (
     modal.Image.from_registry(

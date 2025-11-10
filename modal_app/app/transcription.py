@@ -8,6 +8,7 @@ from app.common import (
     app,
     nemo_transcription_image,
     transformers_transcription_image,
+    omnilingual_transcription_image,
     voxtral_transcription_image,
     phi4_multimodal_image,
     elevenlabs_transcription_image,
@@ -196,6 +197,124 @@ class TransformersAsrBatchTranscription():
         return {
             "num_samples": len(filenames),
             "transcriptions": transcriptions,
+            "total_time": total_time,
+        }
+
+
+# ============================================================================
+# Omnilingual ASR Models
+# ============================================================================
+
+with omnilingual_transcription_image.imports():
+    import torch
+    from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
+    import evaluate
+    import utils.normalizer.data_utils as du
+    from pathlib import Path
+    import time
+    from utils.data import copy_concurrent
+
+
+@app.cls(
+    image=omnilingual_transcription_image,
+    timeout=60*MINUTES,
+    volumes={
+        DATASETS_VOLPATH: dataset_volume,
+        MODELS_VOLPATH: model_volume,
+        RESULTS_VOLPATH: results_volume,
+    },
+    scaledown_window=5,
+)
+class OmnilingualAsrBatchTranscription():
+    DEFAULT_MODEL_ID = "omniASR_LLM_7B"
+    DEFAULT_GPU_TYPE = "L40S"
+    DEFAULT_BATCH_SIZE = 2
+    DEFAULT_NUM_REQUESTS = 10
+    DEFAULT_TARGET_LANG = "spa_Latn"
+    model_id: str = modal.parameter(default=DEFAULT_MODEL_ID)
+    gpu_batch_size: int = modal.parameter(default=DEFAULT_BATCH_SIZE)
+    target_lang: str = modal.parameter(default=DEFAULT_TARGET_LANG)
+
+
+    @modal.enter()
+    def setup(self):
+
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        try:
+            self.pipeline = ASRInferencePipeline(model_card=self.model_id, device=self.device)
+        except TypeError:
+            self.pipeline = ASRInferencePipeline(model_card=self.model_id)
+
+        if hasattr(self.pipeline, "to"):
+            try:
+                self.pipeline.to(self.device)
+            except Exception:
+                pass
+
+    @modal.method()
+    async def run_inference(self, audio_filepaths):
+
+        local_filepaths = [path.replace(DATASETPATH_MODAL, '/tmp') for path in audio_filepaths]
+        filenames = [filepath.split('/')[-1] for filepath in local_filepaths]
+
+        copy_concurrent(Path(DATASETPATH_MODAL), Path('/tmp/'), filenames)
+
+        start_time = time.perf_counter()
+
+        lang_argument = [self.target_lang] * len(local_filepaths)
+
+        try:
+            raw_transcriptions = self.pipeline.transcribe(
+                local_filepaths,
+                lang=lang_argument,
+                batch_size=self.gpu_batch_size,
+            )
+        except TypeError:
+            raw_transcriptions = self.pipeline.transcribe(
+                local_filepaths,
+                lang=self.target_lang,
+                batch_size=self.gpu_batch_size,
+            )
+
+        total_time = time.perf_counter() - start_time
+        print("Total time:", total_time)
+
+        predictions = []
+        if isinstance(raw_transcriptions, dict):
+            for key in ("text", "transcriptions", "predictions"):
+                if key in raw_transcriptions:
+                    candidate = raw_transcriptions[key]
+                    if isinstance(candidate, (list, tuple)):
+                        predictions = list(candidate)
+                    else:
+                        predictions = [candidate]
+                    break
+            else:
+                predictions = [str(value) for value in raw_transcriptions.values()]
+        elif isinstance(raw_transcriptions, (list, tuple)):
+            for item in raw_transcriptions:
+                if isinstance(item, dict):
+                    for key in ("text", "transcription", "predicted_text"):
+                        if key in item:
+                            predictions.append(item[key])
+                            break
+                    else:
+                        predictions.append(str(item))
+                else:
+                    predictions.append(str(item))
+        elif raw_transcriptions is None:
+            predictions = [""] * len(local_filepaths)
+        else:
+            predictions = [str(raw_transcriptions)]
+
+        while len(predictions) < len(local_filepaths):
+            predictions.append("")
+        if len(predictions) > len(local_filepaths):
+            predictions = predictions[:len(local_filepaths)]
+
+        return {
+            "num_samples": len(filenames),
+            "transcriptions": predictions,
             "total_time": total_time,
         }
 
@@ -551,6 +670,15 @@ class TranscriptionRunner():
             )(
                 model_id=cfg.model_id,
                 gpu_batch_size=cfg.gpu_batch_size,
+            )
+        elif self.model_type == "omnilingual":
+            target_lang = getattr(cfg, "target_lang", OmnilingualAsrBatchTranscription.DEFAULT_TARGET_LANG)
+            transcription_cls = OmnilingualAsrBatchTranscription.with_options(
+                gpu=cfg.gpu_type,
+            )(
+                model_id=cfg.model_id,
+                gpu_batch_size=cfg.gpu_batch_size,
+                target_lang=target_lang,
             )
         elif self.model_type == "phi4_multimodal":
             transcription_cls = Phi4MultimodalAsrBatchTranscription.with_options(

@@ -136,6 +136,19 @@ modal run run.py::batch_transcription_transformers \
   --num-requests 10
 ```
 
+**For OmniLingual ASR models (omniASR):**
+
+```bash
+modal run run.py::batch_transcription_omnilingual \
+  --model_id omniASR_LLM_7B \
+  --target-lang spa_Latn \
+  --gpu-type L40S \
+  --gpu-batch-size 2 \
+  --num-requests 10
+```
+
+> **Important:** The OmniLingual inference pipeline currently accepts audio clips shorter than 40 seconds. Split or chunk longer utterances before running the job.
+
 ## Configuration Options
 
 | Argument | Default | Description |
@@ -144,9 +157,10 @@ modal run run.py::batch_transcription_transformers \
 | `--dataset` | `es-cl-asr-test-only` | Dataset name |
 | `--split` | `test` | Dataset split |
 | `--gpu-type` | `L40S` | GPU type (`L4`, `L40S`, `A100`, `H100`) |
-| `--gpu-batch-size` | 32 (NeMo) / 16 (Transformers) | Samples per GPU batch |
+| `--gpu-batch-size` | 32 (NeMo) / 16 (Transformers) / 2 (OmniLingual) | Samples per GPU batch |
 | `--num-requests` | 10 | Number of parallel GPU containers |
 | `--job-id` | Auto-generated | Job identifier for results |
+| `--target-lang` | `spa_Latn` (OmniLingual) | BCP-47 target language for OmniLingual models |
 
 ### GPU Types and Pricing
 
@@ -193,6 +207,18 @@ modal run run.py::batch_transcription_transformers --model_id rcastrovexler/whis
 # Whisper Large Turbo Latam
 modal run run.py::batch_transcription_transformers --model_id surus-lat/whisper-large-v3-turbo-latam
 ```
+
+### OmniLingual ASR
+
+```bash
+# omniASR LLM 7B (spa_Latn target)
+modal run run.py::batch_transcription_omnilingual --model_id omniASR_LLM_7B --target-lang spa_Latn --gpu-batch-size 2
+```
+
+### OmniLingual ASR Notes
+
+- Requires libsndfile support (handled in Modal image).
+- Keep audio clips under 40 seconds per the current release limitations.
 
 ### ElevenLabs
 
