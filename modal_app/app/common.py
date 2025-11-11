@@ -80,11 +80,13 @@ omnilingual_transcription_image = (
         {
             "HF_HUB_ENABLE_HF_TRANSFER": "1",
             "HF_HOME": MODELS_VOLPATH,
+            "CC": "gcc",
+            "CXX": "g++",
         }
     )
-    .apt_install("ffmpeg", "libsndfile1")
+    .apt_install("ffmpeg", "libsndfile1", "build-essential", "cmake")
     .pip_install(
-            "torch==2.7.1",
+            "torch==2.8.0",  # Updated to match fairseq2n requirement
             "evaluate==0.4.3",
             "librosa==0.11.0",
             "soundfile==0.13.1",
